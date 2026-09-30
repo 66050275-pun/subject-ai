@@ -216,7 +216,9 @@ async def extract_bibliography_result(data, text, provider, model, key, base_url
     total = len(chunks)
     if not chunks:
         raise HTTPException(422, 'ไม่พบข้อความบรรณานุกรม')
-    semaphore = asyncio.Semaphore(2)
+    # Gateways may enforce one in-flight generation per account/model.
+    # Serialize MaxPlus batches; do not automatically repeat paid requests.
+    semaphore = asyncio.Semaphore(1 if provider == 'maxplus' else 2)
     completed = 0
 
     async def report(stage):
@@ -246,14 +248,21 @@ async def extract_bibliography_result(data, text, provider, model, key, base_url
             await report('extracting')
             return entries
 
-    tasks = [asyncio.create_task(part(i, chunk)) for i, chunk in enumerate(chunks)]
-    try:
-        batches = await asyncio.gather(*tasks)
-    except BaseException:
-        for task in tasks:
-            task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
-        raise
+    if provider == 'maxplus':
+        # Do not queue tasks behind a semaphore: after an immediate failure,
+        # waiters could start before gather propagates the error/cancels them.
+        batches = []
+        for i, chunk in enumerate(chunks):
+            batches.append(await part(i, chunk))
+    else:
+        tasks = [asyncio.create_task(part(i, chunk)) for i, chunk in enumerate(chunks)]
+        try:
+            batches = await asyncio.gather(*tasks)
+        except BaseException:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
 
     merged = []
     numbers = {}

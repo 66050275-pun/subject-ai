@@ -119,7 +119,13 @@ def raise_provider_error(response, provider):
     if response.status_code == 504:
         raise HTTPException(504, prefix + ': ผู้ให้บริการหมดเวลาประมวลผล (HTTP 504) ลองใช้โมเดลอื่นหรือเรียกอีกครั้งภายหลัง')
     if response.status_code == 429:
-        raise HTTPException(429, prefix + ': โควตาเต็มหรือวงเงินไม่เพียงพอ ตรวจ quota และ billing ของ project')
+        retry_after = response.headers.get('Retry-After', '').strip()
+        wait = (f' ผู้ให้บริการแนะนำให้รอ {int(retry_after)} วินาทีก่อนลองใหม่'
+                if re.fullmatch(r'\d{1,7}', retry_after) else ' รอสักครู่ก่อนลองใหม่')
+        raise HTTPException(429, prefix + ': ถูกจำกัดการเรียก API (HTTP 429): '
+                             'อาจเกินจำนวนคำขอ จำนวนโทเคน หรือโควตาของบัญชี/โมเดล.'
+                             + wait + ' หากยังเกิดซ้ำให้ตรวจ limits และ usage กับผู้ให้บริการ '
+                             'สถานะนี้อย่างเดียวไม่ได้ยืนยันว่าเครดิตหมด ระบบไม่ได้ลองซ้ำอัตโนมัติ')
     if response.status_code == 400:
         if status == 'FAILED_PRECONDITION':
             raise HTTPException(400, prefix + ': เงื่อนไข project ยังไม่พร้อม ตรวจ billing และการรองรับ API ในประเทศ/พื้นที่ของเซิร์ฟเวอร์')
