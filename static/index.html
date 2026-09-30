@@ -49,6 +49,21 @@
         <button id="dataset-doi" type="button" data-dataset="doi" disabled aria-pressed="false"><span>→ จาก DOI</span><b id="dataset-doi-count">—</b></button>
       </div>
       <p id="dataset-note" class="dataset-note" role="status"></p>
+      <section class="oa-search-panel" aria-label="ค้นหา Open Access เพิ่มเติม">
+        <div><span class="section-kicker">OPEN ACCESS / MORE COPIES</span>
+          <h3>ตามหา PDF ให้ครบขึ้น</h3>
+          <p>ค้นคลังผู้เขียนและฉบับสำรองสำหรับชุดที่เปิดอยู่ · ไม่ใช้ AI key · ไม่เปลี่ยนจำนวน references</p>
+        </div>
+        <div class="oa-search-actions">
+          <label>อีเมลติดต่อสำหรับ Unpaywall (ไม่บังคับ)
+            <input id="oa-contact-email" type="email" maxlength="254" placeholder="you@example.com" autocomplete="email">
+          </label>
+          <p class="oa-privacy-note">อีเมลนี้ส่งให้ Unpaywall เพื่อใช้ API และไม่ถูกบันทึกโดยแอป</p>
+          <div><button id="oa-search-button" type="button">ค้น PDF เพิ่มทุกแหล่ง →</button>
+            <button id="export-pdf-links" type="button">↓ ส่งออกลิงก์ PDF</button></div>
+        </div>
+        <p id="oa-status" role="status" aria-live="polite">พบลิงก์จากฐานข้อมูลไม่ได้รับรองว่าดาวน์โหลดได้จริงทุกลิงก์ · มีป้ายแยกฉบับผู้เขียนและ preprint</p>
+      </section>
       <div class="flex flex-col justify-between gap-5 border-b border-slate-200 pb-6 sm:flex-row sm:items-end">
         <div>
           <p class="text-sm font-medium text-teal-700">ผลการวิเคราะห์</p>
@@ -229,7 +244,7 @@
         badge.textContent = paper.access_label || 'ยังไม่พบข้อมูลการเข้าถึง';
         badge.className = 'inline-flex w-fit shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ' + accessBadgeStyle(paper.access_status);
         links.replaceChildren();
-        if (paper.oa_pdf_url) links.append(makeLink('↓  ดาวน์โหลด PDF', paper.oa_pdf_url, 'bg-emerald-700 text-white hover:bg-emerald-800'));
+        appendPDFLinks(links, paper);
         if (paper.paper_url) links.append(makeLink('→  เปิดหน้าบทความ', paper.paper_url, 'bg-teal-700 text-white hover:bg-teal-800'));
         if (paper.scholar_url) links.append(makeLink('⌕  Google Scholar', paper.scholar_url, 'bg-slate-100 text-slate-700 hover:bg-slate-200'));
       }
@@ -277,6 +292,7 @@
       const datasets = new Map();
       let activeDataset = null;
       let sourceVersion = 0;
+      let oaController = null;
       const datasetLabels = {code: 'สกัดด้วยโค้ด', ai: 'สกัดด้วย AI', doi: 'จากฐานข้อมูล DOI'};
       function saveDataset() {
         const record = datasets.get(activeDataset);
@@ -287,6 +303,7 @@
         }
       }
       function resetDatasets() {
+        oaController?.abort();
         datasets.clear(); activeDataset = null; sourceVersion += 1;
         selectedPapers.clear(); clusterColors.clear(); chatHistory = [];
         document.getElementById('chat-log').textContent = '';
@@ -313,6 +330,7 @@
         if (!restoring) datasets.set(kind, {payload, selected: new Set(), colors: new Map(), history: [], chat: '', analysis: '', file: kind === 'doi' ? null : selectedFile, doi: kind === 'doi' ? (payload.source_paper?.doi || document.getElementById('doi-input').value.trim()) : ''});
         activeDataset = kind;
         const record = datasets.get(kind);
+        document.getElementById('oa-status').textContent = record.oa_status || 'พบลิงก์จากฐานข้อมูลไม่ได้รับรองว่าดาวน์โหลดได้จริงทุกลิงก์ · มีป้ายแยกฉบับผู้เขียนและ preprint';
         selectedPapers.clear(); for (const id of record.selected) selectedPapers.add(id);
         clusterColors = new Map(record.colors); chatHistory = [...record.history];
         document.getElementById('network-legend').innerHTML = '<span>● สีเขียว: มี citation link · สีเทา: ยังไม่พบ citation link</span>';
@@ -340,9 +358,9 @@
         document.getElementById('results-heading').textContent = resultMode === 'doi' ? 'เครือข่ายของงานวิจัยนี้' : 'รายการอ้างอิง · ' + datasetLabels[kind];
         document.getElementById('total-stat-label').textContent = resultMode === 'doi' ? 'รายการที่งานนี้อ้างถึง' : 'ตรวจพบ References';
         document.getElementById('citation-stat-label').textContent = resultMode === 'doi' ? 'ถูกอ้างโดย (ฐานข้อมูล)' : 'Citation links ในเนื้อหา';
-        document.getElementById('links-stat-label').textContent = resultMode === 'doi' ? 'รายการอ้างอิงที่มีลิงก์' : 'พบลิงก์ไปยังเปเปอร์';
+        document.getElementById('links-stat-label').textContent = 'References ที่พบ PDF';
         document.getElementById('total-stat').textContent = referenceCount;
-        document.getElementById('links-stat').textContent = payload.direct_links ?? allResults.filter((item) => item.paper_url).length;
+        document.getElementById('links-stat').textContent = allResults.filter((item) => item.oa_pdf_url).length;
         document.getElementById('citation-stat').textContent = resultMode === 'doi' ? citationLinkCount : (citationLinksAvailable ? citationLinkCount : '—');
         document.getElementById('citation-stat-caption').textContent = resultMode === 'doi'
           ? `แสดง ${allCitingResults.length} รายการ${citationsTruncated ? ' จากตัวอย่างที่ดึงมา' : ''}`
@@ -501,6 +519,7 @@
       document.getElementById('clear-key').onclick = () => { document.getElementById('openai-key').value = ''; };
       let aiBusy = false;
       async function callAI(feature, extra = {}) {
+        if (oaController) throw new Error('รอการค้นหา PDF ปัจจุบันเสร็จก่อน');
         const key = document.getElementById('openai-key').value.trim();
         if (!key) { const settings = document.getElementById('ai-settings'); settings.open = true; settings.scrollIntoView({behavior: 'smooth', block: 'center'}); throw new Error('กรุณาเชื่อมต่อ AI และกรอก API key ของค่ายที่เลือกก่อน'); }
         if (providerSelect.value === 'maxplus' && !document.getElementById('summary-model').value.trim()) throw new Error('เลือกหรือกรอกชื่อโมเดล MaxPlus ก่อน');
@@ -607,6 +626,82 @@
         link.className = 'inline-flex items-center rounded-lg px-3 py-2 text-xs font-semibold transition ' + style;
         return link;
       }
+      function appendPDFLinks(host, item) {
+        const copies = Array.isArray(item.pdf_locations) ? item.pdf_locations : [];
+        const versions = {publishedVersion: 'ฉบับตีพิมพ์', acceptedVersion: 'ฉบับผู้เขียนที่รับตีพิมพ์', submittedVersion: 'preprint', unknown: 'ไม่ระบุฉบับ'};
+        if (item.oa_pdf_url) host.append(makeLink('↓ PDF · ' + (copies[0]?.source || 'Open Access'), item.oa_pdf_url, 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'));
+        if (copies.length) {
+          const detail = document.createElement('details'); detail.className = 'oa-copy-list';
+          const summary = document.createElement('summary'); summary.textContent = `ดู PDF ทุกฉบับ / ลิงก์สำรอง (${copies.length})`; detail.append(summary);
+          for (const copy of copies) {
+            const row = document.createElement('div');
+            row.append(makeLink('↓ ' + copy.source + ' · ' + (versions[copy.version] || copy.version), copy.url, 'bg-slate-100 text-slate-700'));
+            const note = document.createElement('span'); note.textContent = [copy.license, copy.matched_by === 'title' ? 'จับคู่จากชื่อเรื่อง · ตรวจเทียบก่อนใช้' : null].filter(Boolean).join(' · '); row.append(note);
+            if (copy.landing_url) row.append(makeLink('หน้าแหล่งต้นทาง ↗', copy.landing_url, 'text-teal-700'));
+            detail.append(row);
+          }
+          host.append(detail);
+        }
+      }
+      document.getElementById('oa-search-button').onclick = async () => {
+        if (oaController || aiBusy || !activeDataset) { showAlert('รอการค้นหาปัจจุบันเสร็จก่อน'); return; }
+        const email = document.getElementById('oa-contact-email');
+        if (!email.reportValidity()) return;
+        const record = datasets.get(activeDataset); const kind = activeDataset; const version = sourceVersion;
+        const controller = new AbortController(); oaController = controller;
+        const button = document.getElementById('oa-search-button'); button.disabled = true;
+        const output = document.getElementById('oa-status'); output.textContent = 'กำลังค้นหา PDF ฉบับสำรอง…';
+        let reader;
+        try {
+          const papers = record.payload.results.map(p => ({reference_number: p.reference_number,
+            title: String(p.title || '').slice(0, 1200), matched_title: p.matched_title || null,
+            original_text: String(p.original_text || '').slice(0, 4000), doi: p.doi || null, year: p.year ? String(p.year) : null}));
+          const response = await fetch('/api/open-access/search', {method: 'POST', signal: controller.signal,
+            headers: {'Content-Type': 'application/json'}, body: JSON.stringify({papers, contact_email: email.value.trim()})});
+          if (!response.ok) { const error = await response.json(); throw new Error(typeof error.detail === 'string' ? error.detail : 'ข้อมูลค้นหาไม่ถูกต้อง'); }
+          reader = response.body.getReader(); const decoder = new TextDecoder(); let pending = ''; let doneEvent = false;
+          const consume = line => {
+            if (!line.trim() || version !== sourceVersion || datasets.get(kind) !== record) return;
+            const event = JSON.parse(line);
+            if (event.type === 'error') throw new Error(event.detail);
+            if (event.type === 'item') {
+              const item = record.payload.results.find(p => p.reference_number === event.result.reference_number);
+              if (item) {
+                const preserved = [...(item.pdf_locations || [])];
+                if (item.oa_pdf_url && !preserved.some(p => p.url === item.oa_pdf_url)) preserved.push({url: item.oa_pdf_url, source: 'เดิม', version: 'unknown'});
+                const sources = [...(item.metadata_sources || [])]; const links = [...(item.source_links || [])];
+                const oldTitle = item.matched_title; const oldStatus = item.access_status;
+                Object.assign(item, event.result); item.matched_title ||= oldTitle;
+                for (const source of sources) if (!item.metadata_sources.includes(source)) item.metadata_sources.push(source);
+                for (const link of links) if (!item.source_links.some(p => p.url === link.url)) item.source_links.push(link);
+                for (const old of preserved) if (!item.pdf_locations.some(p => p.url === old.url)) item.pdf_locations.push(old);
+                if (!item.oa_pdf_url && item.pdf_locations.length) { item.oa_pdf_url = item.pdf_locations[0].url; item.access_status = 'pdf_available'; item.access_label = 'ดาวน์โหลด PDF ได้'; }
+                if (item.oa_pdf_url) item.access_detail = `พบ ${item.pdf_locations.length} ลิงก์ PDF จากฐานข้อมูล · ยังไม่ได้ตรวจดาวน์โหลดจริง · ตรวจฉบับก่อนใช้`;
+                else if (oldStatus === 'open_source_record' && item.access_status === 'scholar_search') { item.access_status = oldStatus; item.access_label = 'พบระเบียนในฐานข้อมูลเปิด'; item.access_detail = 'พบระเบียน แต่ยังไม่มีลิงก์ PDF ดาวน์โหลดตรง'; }
+              }
+              record.oa_status = `ค้นแล้ว ${event.completed}/${event.total} รายการ · พบ PDF ${record.payload.results.filter(p => p.oa_pdf_url).length} references`;
+              if (activeDataset === kind) {
+                output.textContent = record.oa_status;
+                document.getElementById('links-stat').textContent = record.payload.results.filter(p => p.oa_pdf_url).length;
+                renderResults();
+              }
+            }
+            if (event.type === 'done') {
+              doneEvent = true;
+              const issues = new Set(); for (const p of record.payload.results) for (const [source, state] of Object.entries(p.oa_search || {})) if (!['found', 'not found'].includes(state)) issues.add(source + ': ' + state);
+              record.oa_status = `ค้นครบ ${event.total} รายการ · พบ PDF ${record.payload.results.filter(p => p.oa_pdf_url).length} references` + (issues.size ? ' · แหล่งที่ยังค้นได้ไม่ครบ: ' + [...issues].join(' / ') : '');
+              if (activeDataset === kind) { output.textContent = record.oa_status; renderNetwork(); }
+            }
+          };
+          while (true) {
+            const {value, done} = await reader.read(); pending += decoder.decode(value, {stream: !done});
+            let end; while ((end = pending.indexOf('\n')) >= 0) { consume(pending.slice(0, end)); pending = pending.slice(end + 1); }
+            if (done) break;
+          }
+          consume(pending); if (!doneEvent && version === sourceVersion) throw new Error('การเชื่อมต่อจบก่อนค้นครบ ผลที่ค้นพบแล้วและชุดเดิมยังอยู่');
+        } catch (error) { if (error.name !== 'AbortError' && version === sourceVersion && activeDataset === kind) output.textContent = error.message; }
+        finally { await reader?.cancel().catch(() => {}); if (oaController === controller) oaController = null; button.disabled = false; }
+      };
       function accessBadgeStyle(status) {
         if (status === 'pdf_available') return 'bg-emerald-100 text-emerald-800';
         if (status === 'open_source_record') return 'bg-sky-100 text-sky-800';
@@ -692,7 +787,7 @@
           sourceText.className = 'mt-2 text-xs ' + (metadataSources.length ? 'text-slate-500' : 'text-amber-700');
           sourceText.textContent = metadataSources.length
             ? 'พบข้อมูลจาก ' + metadataSources.join(' · ')
-            : 'ยังไม่พบผลที่ตรงจาก Crossref, OpenAlex หรือ Semantic Scholar';
+            : 'ยังไม่พบผลที่ตรงจากฐานข้อมูลวิชาการที่ค้นไว้';
           content.append(sourceText);
           if (currentView === 'references') {
             const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.checked = selectedPapers.has(item.reference_number);
@@ -711,7 +806,7 @@
           original.textContent = item.original_text; card.append(original);
           const actions = document.createElement('div'); actions.className = 'mt-4 flex flex-wrap gap-2';
           if (item.paper_url) actions.append(makeLink('→  ดู Paper', item.paper_url, 'bg-teal-700 text-white hover:bg-teal-800'));
-          if (item.oa_pdf_url) actions.append(makeLink('↓  ดาวน์โหลด PDF', item.oa_pdf_url, 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'));
+          appendPDFLinks(actions, item);
           if (Array.isArray(item.source_links)) {
             for (const source of item.source_links) {
               if (source.url) actions.append(makeLink('→  ' + source.name, source.url, 'bg-slate-100 text-slate-700 hover:bg-slate-200'));
@@ -783,6 +878,11 @@
         const anchor = document.createElement('a'); anchor.href = url; anchor.download = filename;
         document.body.append(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
+      document.getElementById('export-pdf-links').onclick = () => {
+        const urls = [...new Set(visibleItems().flatMap(p => p.pdf_locations?.length ? p.pdf_locations.map(c => c.url) : p.oa_pdf_url ? [p.oa_pdf_url] : []))];
+        if (!urls.length) { showAlert('ชุดที่กรองอยู่ยังไม่พบลิงก์ PDF'); return; }
+        downloadBlob(urls.join('\n') + '\n', sourceName + '-' + activeDataset + '-pdf-links.txt', 'text/plain;charset=utf-8');
+      };
       document.getElementById('export-json').addEventListener('click', () => {
         const exportItems = visibleItems();
         const suffix = '-' + activeDataset + (currentView === 'citations' ? '-citing-papers' : '-references');
@@ -791,13 +891,13 @@
       document.getElementById('export-csv').addEventListener('click', () => {
         const exportItems = visibleItems();
         const suffix = '-' + activeDataset + (currentView === 'citations' ? '-citing-papers' : '-references');
-        const columns = ['extraction_source', 'reference_number', 'citation_mentions', 'original_text', 'title', 'year', 'matched_title', 'doi', 'paper_url', 'oa_pdf_url', 'access_status', 'access_label', 'metadata_sources', 'scholar_url'];
+        const columns = ['extraction_source', 'reference_number', 'citation_mentions', 'original_text', 'title', 'year', 'matched_title', 'doi', 'paper_url', 'oa_pdf_url', 'pdf_locations', 'oa_search', 'access_status', 'access_label', 'metadata_sources', 'scholar_url'];
         const escape = (value) => {
           let text = String(value ?? '');
           if (/^\s*[=+@-]/.test(text)) text = "'" + text;
           return '"' + text.replace(/"/g, '""') + '"';
         };
-        const csv = [columns, ...exportItems.map((item) => columns.map((key) => item[key] ?? ''))]
+        const csv = [columns, ...exportItems.map((item) => columns.map((key) => typeof item[key] === 'object' && item[key] !== null ? JSON.stringify(item[key]) : item[key] ?? ''))]
           .map((row) => row.map(escape).join(',')).join('\r\n');
         downloadBlob('\ufeff' + csv, sourceName + suffix + '.csv', 'text/csv;charset=utf-8');
       });

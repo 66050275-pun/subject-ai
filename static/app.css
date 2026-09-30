@@ -1548,3 +1548,19 @@ label:has(>#search-input)>svg {
 .graph-highlight { box-shadow: 0 0 0 3px #c6b5e2; }
 #network-detail { margin-top: 14px; line-height: 1.8; }
 @media(max-width:620px) { .network-panel > section { padding: 12px; } #citation-graph { height: 440px; } .graph-inspector { flex-direction: column; align-items: start; } .graph-inspector-actions { flex-wrap: wrap; } }
+/* Open Access discovery workspace */
+.oa-search-panel { margin: 20px 0 26px; padding: 24px; border: 1px solid #c6ded3; border-radius: 20px; background: #f2f8f4; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.oa-search-panel h3 { font-size: 22px; margin: 8px 0; font-weight: 700; }
+.oa-search-panel p { font-size: 13px; color: #53685d; line-height: 1.7; }
+.oa-search-actions label { display: grid; gap: 7px; font-size: 12px; font-weight: 600; }
+.oa-search-actions input { width: 100%; padding: 11px 14px; border: 1px solid #c6ded3; border-radius: 10px; background: white; }
+.oa-search-actions > div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.oa-search-actions button { border: 1px solid #c6ded3; background: white; color: #205642; border-radius: 10px; padding: 11px 14px; font-weight: 600; font-size: 13px; }
+.oa-search-actions button:first-child { background: #205642; color: white; }
+.oa-search-actions button:disabled { opacity: .5; cursor: wait; }
+.oa-search-panel #oa-status { grid-column: 1 / -1; margin: 0; overflow-wrap: anywhere; }
+.oa-copy-list { flex-basis: 100%; font-size: 12px; color: #205642; }
+.oa-copy-list summary { cursor: pointer; padding: 9px 0; }
+.oa-copy-list > div { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 0; }
+.oa-copy-list span { color: #64746b; }
+@media (max-width: 680px) { .oa-search-panel { grid-template-columns: 1fr; padding: 18px; } }

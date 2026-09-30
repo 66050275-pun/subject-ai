@@ -33,6 +33,7 @@ Crossref's polite-pool contact is optional. Set `PAPERREF_CONTACT_EMAIL` before 
 
 - `POST /api/references` — PDF upload, bibliography extraction, and metadata resolution
 - `POST /api/doi` — DOI paper, its references (up to 100), and a bounded list of citing papers (`doi` form field)
+- `POST /api/open-access/search` — JSON bibliography and optional contact email; streamed repository search without an AI key
 - `POST /api/summarize` — multipart PDF or DOI and optional `model` form field; provide the API key using the `X-OpenAI-API-Key` header
 
 ## Layout
@@ -48,3 +49,19 @@ For MaxPlus, choose **MaxPlus AI**, enter its own API key and use the default ba
 The frontend now separates **Code extraction**, **AI extraction** and **DOI database** results into individual datasets. Switch between them to inspect their own counts, selections, graph and exports. See `static/app.css` for the redesigned responsive workspace.
 
 Large AI bibliographies are extracted in smaller batches with live progress. The extraction read timeout is 180 seconds per batch, with no automatic paid retries. The graph now groups labelled paper cards by access status or AI themes, supports drag/zoom/Fit, and opens an inspector for selection and navigation. Upstream provider timeouts can still occur.
+
+## Find more Open Access PDFs
+
+Both code and AI extraction now use the same expanded resolver: OpenAlex's full list of OA locations, Semantic Scholar, Unpaywall, Europe PMC and explicit arXiv IDs. Click **ค้น PDF เพิ่มทุกแหล่ง** to also search HAL, Zenodo, arXiv titles and CORE, even for references that already have a PDF. This does not use AI credits. Expand **ดู PDF ทุกฉบับ / ลิงก์สำรอง** to choose a host/version. Published, accepted and preprint versions are labelled when known. **ส่งออกลิงก์ PDF** exports URLs for the current filter, not the PDF bytes. JSON/CSV include all copies and source diagnostics. Counts/IDs and citation/AI context remain unchanged.
+
+Unpaywall requires a contact email: enter it in the OA panel or set `PAPERREF_CONTACT_EMAIL`. The UI email is sent to Unpaywall and is not persisted by this app. CORE requires an academic API key. OpenAlex/Semantic Scholar keys may be needed for current access/quotas. These are separate from AI provider keys. Set only values you have before starting the server:
+
+```bash
+export PAPERREF_CONTACT_EMAIL='you@example.com'
+export OPENALEX_API_KEY='your-openalex-key'
+export SEMANTIC_SCHOLAR_API_KEY='your-semantic-scholar-key'
+export CORE_API_KEY='your-core-key'
+uvicorn main:app --reload
+```
+
+Missing optional credentials skip that service; other sources continue. arXiv requests are spaced at least 3 seconds apart, so large deep searches may take several minutes. See [OPEN_ACCESS.md](OPEN_ACCESS.md) for source documentation, matching rules and limits. URLs are provider-indexed, not verified downloads; redirects, unavailable hosts and expired links can still prevent downloading. The server does not download or proxy PDF files, and no coverage percentage is guaranteed.

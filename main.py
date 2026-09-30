@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from extractor import ExtractionError, extract_citation_counts, extract_citation_contexts, extract_references
 from ai_features import router as ai_router
+from oa_features import router as oa_router
 from resolver import (
     lookup_doi,
     lookup_doi_relationships,
@@ -28,6 +29,7 @@ app = FastAPI(
 )
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(ai_router)
+app.include_router(oa_router)
 
 
 @app.get("/health")
@@ -117,4 +119,3 @@ async def find_by_doi(doi: str = Form(...)) -> dict:
         "results": relationships["references"],
         "citing_papers": relationships["citing_papers"],
     }
-

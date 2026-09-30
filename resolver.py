@@ -13,6 +13,7 @@ from urllib.parse import quote, quote_plus, unquote, urlsplit
 import httpx
 
 from extractor import Reference
+from open_access import OADiscovery, location, merge_locations, openalex_locations, openalex_records, safe_url
 
 REQUEST_TIMEOUT_SECONDS = 8.0
 MAX_CONCURRENT_LOOKUPS = 8
@@ -50,6 +51,20 @@ def _normalize(value: str) -> str:
     return "".join(character.lower() for character in value if character.isalnum())
 
 
+async def _academic_get(client, url, **kwargs):
+    """Optional academic API credentials go only to their own fixed API host."""
+    host = urlsplit(url).hostname
+    if host == 'api.openalex.org':
+        key = os.getenv('OPENALEX_API_KEY', '').strip()
+        if key:
+            kwargs['params'] = {**(kwargs.get('params') or {}), 'api_key': key}
+    elif host == 'api.semanticscholar.org':
+        key = os.getenv('SEMANTIC_SCHOLAR_API_KEY', '').strip()
+        if key:
+            kwargs['headers'] = {**(kwargs.get('headers') or {}), 'x-api-key': key}
+    return await client.get(url, **kwargs)
+
+
 def _usable_title(value: str | None) -> bool:
     if not value:
         return False
@@ -70,17 +85,11 @@ def _title_similarity(reference_title: str, candidate_title: str) -> float:
 
 
 def _title_matches(reference_title: str, candidate_title: str) -> bool:
-    return _title_similarity(reference_title, candidate_title) >= 0.52
+    return _title_similarity(reference_title, candidate_title) >= 0.88
 
 
 def _safe_http_url(value: str | None) -> str | None:
-    if not isinstance(value, str) or not value:
-        return None
-    try:
-        parsed = urlsplit(value)
-    except ValueError:
-        return None
-    return value if parsed.scheme in {"http", "https"} and parsed.netloc else None
+    return safe_url(value)
 
 
 def _first_author_family(citation: str) -> str:
@@ -113,13 +122,15 @@ def _crossref_author_matches(item: dict, citation: str) -> bool:
 def _good_crossref_match(item: dict, reference: Reference) -> bool:
     titles = item.get("title") or []
     matched_title = titles[0] if titles else ""
-    if _usable_title(reference.title) and _title_similarity(reference.title, matched_title) >= 0.45:
-        return True
+    if _usable_title(reference.title) and _title_similarity(reference.title, matched_title) >= 0.88:
+        return not reference.year or _crossref_year(item) in (None, reference.year)
 
     full_citation = _normalize(reference.original_text)
     normalized_title = _normalize(matched_title)
     if len(normalized_title) >= 15 and normalized_title in full_citation:
         return True
+    if _usable_title(reference.title):
+        return False
 
     try:
         score = float(item.get("score", 0))
@@ -132,7 +143,7 @@ def _good_crossref_match(item: dict, reference: Reference) -> bool:
 
 
 async def _crossref_by_doi(client: httpx.AsyncClient, doi: str) -> dict | None:
-    response = await client.get(f"{CROSSREF_URL}/{quote(doi, safe='')}")
+    response = await _academic_get(client, f"{CROSSREF_URL}/{quote(doi, safe='')}")
     if response.status_code == 404:
         return None
     response.raise_for_status()
@@ -147,7 +158,7 @@ async def _crossref_lookup(client: httpx.AsyncClient, reference: Reference) -> d
                 return direct
         except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
             pass
-    response = await client.get(
+    response = await _academic_get(client,
         CROSSREF_URL,
         params={"query.bibliographic": reference.original_text, "rows": 8},
     )
@@ -161,7 +172,7 @@ async def _crossref_lookup(client: httpx.AsyncClient, reference: Reference) -> d
 
 async def _openalex_lookup(client: httpx.AsyncClient, reference: Reference) -> dict | None:
     search = reference.title if _usable_title(reference.title) else reference.original_text
-    response = await client.get(
+    response = await _academic_get(client,
         OPENALEX_URL,
         params={"search": search, "per-page": 5},
     )
@@ -178,8 +189,8 @@ async def _openalex_lookup(client: httpx.AsyncClient, reference: Reference) -> d
         matches,
         key=lambda item: _title_similarity(reference.title, item.get("display_name") or ""),
     )
-    locations = [work.get("best_oa_location") or {}, *(work.get("locations") or [])]
-    pdf_url = next((location.get("pdf_url") for location in locations if location.get("pdf_url")), None)
+    locations = [row for row in openalex_locations(work) if row]
+    pdf_url = locations[0]['url'] if locations else None
     raw_doi = work.get("doi")
     doi = normalize_doi(raw_doi) if raw_doi else None
     return {
@@ -188,12 +199,14 @@ async def _openalex_lookup(client: httpx.AsyncClient, reference: Reference) -> d
         "paper_url": _safe_http_url(raw_doi) or _safe_http_url(work.get("id")),
         "record_url": _safe_http_url(work.get("id")),
         "oa_pdf_url": _safe_http_url(pdf_url),
+        "pdf_locations": locations,
+        "oa_records": openalex_records(work),
         "year": str(work.get("publication_year") or "") or None,
     }
 
 
 async def _openalex_by_doi(client: httpx.AsyncClient, doi: str) -> dict | None:
-    response = await client.get(
+    response = await _academic_get(client,
         OPENALEX_URL,
         params={"filter": f"doi:https://doi.org/{doi}", "per-page": 1},
     )
@@ -202,20 +215,24 @@ async def _openalex_by_doi(client: httpx.AsyncClient, doi: str) -> dict | None:
     if not results:
         return None
     work = results[0]
-    locations = [work.get("best_oa_location") or {}, *(work.get("locations") or [])]
-    pdf_url = next((location.get("pdf_url") for location in locations if location.get("pdf_url")), None)
+    if not isinstance(work, dict):
+        return None
+    locations = [row for row in openalex_locations(work) if row]
+    pdf_url = locations[0]['url'] if locations else None
     return {
         "title": work.get("display_name"),
         "doi": normalize_doi(work.get("doi") or doi),
         "paper_url": _safe_http_url(work.get("doi")) or _safe_http_url(work.get("id")),
         "record_url": _safe_http_url(work.get("id")),
         "oa_pdf_url": _safe_http_url(pdf_url),
+        "pdf_locations": locations,
+        "oa_records": openalex_records(work),
         "year": str(work.get("publication_year") or "") or None,
     }
 
 
 async def _semantic_scholar_by_doi(client: httpx.AsyncClient, doi: str) -> dict | None:
-    response = await client.get(
+    response = await _academic_get(client,
         f"{SEMANTIC_SCHOLAR_URL}/{quote('DOI:' + doi, safe=':')}",
         params={"fields": "title,openAccessPdf,externalIds,url,paperId,year"},
     )
@@ -233,6 +250,7 @@ async def _semantic_scholar_by_doi(client: httpx.AsyncClient, doi: str) -> dict 
         "paper_url": paper_url or f"https://doi.org/{doi}",
         "record_url": paper_url,
         "oa_pdf_url": _safe_http_url(pdf.get("url")),
+        "arxiv_id": (paper.get('externalIds') or {}).get('ArXiv'),
         "year": str(paper.get("year") or "") or None,
     }
 
@@ -242,7 +260,7 @@ async def _semantic_scholar_lookup(
 ) -> dict | None:
     if not _usable_title(reference.title):
         return None
-    response = await client.get(
+    response = await _academic_get(client,
         f"{SEMANTIC_SCHOLAR_URL}/search",
         params={
             "query": reference.title,
@@ -270,6 +288,7 @@ async def _semantic_scholar_lookup(
         "paper_url": paper_url or (f"https://doi.org/{doi}" if doi else None),
         "record_url": paper_url,
         "oa_pdf_url": _safe_http_url(pdf.get("url")),
+        "arxiv_id": (paper.get('externalIds') or {}).get('ArXiv'),
         "year": str(paper.get("year") or "") or None,
     }
 
@@ -286,6 +305,7 @@ def _new_result(reference: Reference) -> dict:
         "scholar_url": None,
         "metadata_sources": [],
         "source_links": [],
+        "pdf_locations": [],
     }
 
 
@@ -303,8 +323,14 @@ def _add_source(result: dict, source_name: str, metadata: dict) -> None:
         result["paper_url"] = paper_url
     if pdf_url and not result["oa_pdf_url"]:
         result["oa_pdf_url"] = pdf_url
+    merge_locations(result, metadata.get('pdf_locations') or [location(pdf_url, source_name, landing=record_url)])
+    for record in metadata.get('oa_records') or []:
+        if record not in result['source_links']:
+            result['source_links'].append(record)
     if metadata.get("year") and not result.get("year"):
         result["year"] = str(metadata["year"])
+    if metadata.get('arxiv_id'):
+        result['arxiv_id'] = metadata['arxiv_id']
     if source_name not in result["metadata_sources"]:
         result["metadata_sources"].append(source_name)
     if record_url and not any(link["name"] == source_name for link in result["source_links"]):
@@ -315,8 +341,8 @@ def _set_access_category(result: dict) -> None:
     if result.get("oa_pdf_url"):
         result["access_status"] = "pdf_available"
         result["access_label"] = "ดาวน์โหลด PDF ได้"
-        result["access_detail"] = "พบลิงก์ PDF ที่เปิดให้อ่านได้จากแหล่งข้อมูล"
-    elif any(source in result.get("metadata_sources", []) for source in ("OpenAlex", "Semantic Scholar")):
+        result["access_detail"] = f"พบ {len(result.get('pdf_locations') or [result['oa_pdf_url']])} ลิงก์ PDF จากฐานข้อมูล · ยังไม่ได้ตรวจดาวน์โหลดจริง · ฉบับผู้เขียน/preprint อาจต่างจากฉบับตีพิมพ์"
+    elif any(source in result.get("metadata_sources", []) for source in ("OpenAlex", "Semantic Scholar", "Unpaywall", "Europe PMC", "arXiv", "HAL", "Zenodo", "CORE")):
         result["access_status"] = "open_source_record"
         result["access_label"] = "พบระเบียนในฐานข้อมูลเปิด"
         result["access_detail"] = "พบระเบียน แต่ยังไม่มีลิงก์ PDF ดาวน์โหลดตรง"
@@ -326,14 +352,20 @@ def _set_access_category(result: dict) -> None:
         result["access_detail"] = "ยังไม่พบ PDF หรือระเบียนจากแหล่ง Open Access ที่ค้นไว้"
 
 
+def _record_lookup_error(result, source, exc):
+    state = f'HTTP {exc.response.status_code}' if isinstance(exc, httpx.HTTPStatusError) else 'unavailable'
+    result.setdefault('oa_search', {})[source] = state
+
+
 async def _resolve_one(
-    client: httpx.AsyncClient, semaphore: asyncio.Semaphore, reference: Reference
+    client: httpx.AsyncClient, semaphore: asyncio.Semaphore, reference: Reference, discovery=None, all_sources=False
 ) -> dict:
     result = _new_result(reference)
     async with semaphore:
         try:
             crossref = await _crossref_lookup(client, reference)
-        except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
+        except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError) as exc:
+            _record_lookup_error(result, 'Crossref', exc)
             crossref = None
         if crossref:
             titles = crossref.get("title") or []
@@ -347,40 +379,44 @@ async def _resolve_one(
                 "year": _crossref_year(crossref),
             })
 
-        if reference.doi:
+        effective_doi = result.get('doi') or reference.doi
+        if effective_doi:
             try:
-                openalex_by_doi = await _openalex_by_doi(client, reference.doi)
+                openalex_by_doi = await _openalex_by_doi(client, effective_doi)
                 if openalex_by_doi:
                     _add_source(result, "OpenAlex", openalex_by_doi)
-            except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
-                pass
-            if not result["oa_pdf_url"]:
+            except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError) as exc:
+                _record_lookup_error(result, 'OpenAlex', exc)
+            if all_sources or not result["oa_pdf_url"]:
                 try:
-                    semantic_by_doi = await _semantic_scholar_by_doi(client, reference.doi)
+                    semantic_by_doi = await _semantic_scholar_by_doi(client, effective_doi)
                     if semantic_by_doi:
                         _add_source(result, "Semantic Scholar", semantic_by_doi)
-                except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
-                    pass
+                except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError) as exc:
+                    _record_lookup_error(result, 'Semantic Scholar', exc)
 
         effective_title = result["matched_title"] or reference.title
         # DOI references have already been checked against exact DOI records in
         # OpenAlex and Semantic Scholar; avoid repeating title-search requests.
-        if not reference.doi and _usable_title(effective_title):
+        if not effective_doi and _usable_title(effective_title):
             lookup_reference = replace(reference, title=effective_title)
             try:
                 openalex = await _openalex_lookup(client, lookup_reference)
                 if openalex:
                     _add_source(result, "OpenAlex", openalex)
-            except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
-                pass
+            except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError) as exc:
+                _record_lookup_error(result, 'OpenAlex', exc)
 
-            if not result["oa_pdf_url"] or not result["paper_url"]:
+            if all_sources or not result["oa_pdf_url"] or not result["paper_url"]:
                 try:
                     semantic_scholar = await _semantic_scholar_lookup(client, lookup_reference)
                     if semantic_scholar:
                         _add_source(result, "Semantic Scholar", semantic_scholar)
-                except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
-                    pass
+                except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError) as exc:
+                    _record_lookup_error(result, 'Semantic Scholar', exc)
+
+        if discovery:
+            await discovery.enrich(result)
 
     search_text = result["matched_title"] or reference.title
     if not _usable_title(search_text):
@@ -401,8 +437,9 @@ async def resolve_references(references: list[Reference]) -> list[dict]:
         headers=_headers(),
         follow_redirects=True,
     ) as client:
+        discovery = OADiscovery(client)
         return await asyncio.gather(
-            *(_resolve_one(client, semaphore, reference) for reference in references)
+            *(_resolve_one(client, semaphore, reference, discovery) for reference in references)
         )
 
 
@@ -456,6 +493,7 @@ async def lookup_doi(value: str) -> dict:
                     _add_source(result, "Semantic Scholar", semantic)
             except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
                 pass
+        await OADiscovery(client).enrich(result)
         search_text = result["matched_title"] or doi
         result["scholar_url"] = "https://scholar.google.com/scholar?q=" + quote_plus(search_text)
         _set_access_category(result)
@@ -496,7 +534,7 @@ async def fetch_doi_summary_material(value: str) -> dict:
 
         openalex = None
         try:
-            response = await client.get(OPENALEX_URL, params={
+            response = await _academic_get(client, OPENALEX_URL, params={
                 "filter": f"doi:https://doi.org/{doi}", "per-page": 1,
             })
             response.raise_for_status()
@@ -599,7 +637,7 @@ def _semantic_scholar_work_to_reference(work: dict, index: int) -> Reference:
 
 async def _openalex_relationships(client: httpx.AsyncClient, doi: str) -> dict:
     fields = "id,display_name,doi,publication_year,authorships,referenced_works,cited_by_count"
-    response = await client.get(OPENALEX_URL, params={
+    response = await _academic_get(client, OPENALEX_URL, params={
         "filter": f"doi:https://doi.org/{doi}", "per-page": 1, "select": fields,
     })
     response.raise_for_status()
@@ -614,7 +652,7 @@ async def _openalex_relationships(client: httpx.AsyncClient, doi: str) -> dict:
     citing_count = int(source.get("cited_by_count") or 0)
     if source_id:
         try:
-            citing_response = await client.get(OPENALEX_URL, params={
+            citing_response = await _academic_get(client, OPENALEX_URL, params={
                 "filter": f"cites:{source_id}",
                 "per-page": 20,
                 "sort": "cited_by_count:desc",
@@ -630,7 +668,7 @@ async def _openalex_relationships(client: httpx.AsyncClient, doi: str) -> dict:
     reference_works: list[dict] = []
     if reference_ids:
         try:
-            references_response = await client.get(OPENALEX_URL, params={
+            references_response = await _academic_get(client, OPENALEX_URL, params={
                 "filter": "openalex_id:" + "|".join(reference_ids),
                 "per-page": min(len(reference_ids), 100),
                 "select": "id,display_name,doi,publication_year,authorships",
@@ -653,7 +691,7 @@ async def _semantic_scholar_relationships(client: httpx.AsyncClient, doi: str) -
     fields = "title,year,externalIds,url,authors,referenceCount,citationCount"
     paper = None
     try:
-        response = await client.get(paper_url, params={"fields": fields})
+        response = await _academic_get(client, paper_url, params={"fields": fields})
         if response.status_code != 404:
             response.raise_for_status()
             paper = response.json()
@@ -663,7 +701,7 @@ async def _semantic_scholar_relationships(client: httpx.AsyncClient, doi: str) -
     list_fields = "title,year,externalIds,url,authors"
     async def get_list(endpoint: str, item_key: str) -> tuple[list[dict], int]:
         try:
-            response = await client.get(
+            response = await _academic_get(client,
                 f"{paper_url}/{endpoint}",
                 params={"offset": 0, "limit": 100 if endpoint == "references" else 20, "fields": list_fields},
             )
