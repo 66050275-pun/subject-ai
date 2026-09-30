@@ -13,12 +13,24 @@ run under FastAPI and Streamlit.
   unchecking the option removes `paperref.ai-preferences.v1`. No keys, papers or chat
   are included. This preference belongs to the browser origin, including the
   Streamlit component's origin.
+- Search history stores whitelisted reference metadata and links in IndexedDB on
+  this browser origin. Recording is initially enabled; users can disable new
+  recording, delete individual entries or clear everything. It excludes API keys,
+  PDFs, citation context excerpts and AI/chat answers. Opening a PDF history result
+  restores its cards/graph; full-text AI requires uploading the original again.
+  Limit: newest 50 results or 8 MB, with a maximum 1 MB per result. Older entries
+  are removed when full; storage denial/quota failures do not stop searches.
+  Anyone using the same browser profile can access this history. Private browsing,
+  clearing site data or changing origins can remove/separate it. JSON export/import
+  is local and validates/rebuilds allowed fields before writing atomically. Invalid
+  imports preserve existing history. Importing a backup does not change recording
+  preferences; use backups to move between devices or local/Streamlit origins.
 - The app adds no tracking/advertising cookies. Streamlit/hosting may use necessary
   cookies and retain operational logs. Google Fonts receives font requests.
   Academic services receive search metadata; AI providers receive the requested
   context and credentials. Their retention policies are separate from this app.
 - Clearing a key removes it from the page; a request already sent to a provider may
-  continue. Refreshing/closing a tab can discard results; export them first.
+  continue. Refreshing/closing a tab discards in-memory files/chat and unsaved results; saved metadata can be reopened from history. Export history as a backup.
 
 ## Implemented controls
 

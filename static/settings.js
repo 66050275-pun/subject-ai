@@ -8,7 +8,7 @@
   let opener=null, closing=false, previousOverflow='';
   const select=section=>{
     for(const button of dialog.querySelectorAll('[data-settings-section]'))button.setAttribute('aria-pressed',String(button.dataset.settingsSection===section));
-    for(const name of ['ai','workspace','privacy'])document.getElementById('settings-'+name).classList.toggle('hidden',name!==section);
+    for(const name of ['ai','workspace','history','privacy'])document.getElementById('settings-'+name).classList.toggle('hidden',name!==section);
     dialog.querySelector('.drawer-scroll').scrollTop=0;
   };
   const open=(section='ai',trigger=document.activeElement)=>{

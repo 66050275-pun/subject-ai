@@ -1611,3 +1611,11 @@ label:has(>#search-input)>svg {
 /* Settings belongs to the workspace navigation on every screen size. */
 .sidebar-settings {width:100%;border:0;background:transparent;text-align:left;font-family:inherit;color:var(--ink)}
 @media(max-width:850px){.sidebar-settings{width:auto}}
+
+.history-toolbar {display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 12px}
+.history-toolbar button,.history-import-label {border:1px solid var(--line);border-radius:10px;background:white;color:var(--ink);padding:9px 12px;font-size:11px;cursor:pointer}
+.history-import-label:focus-within {outline:3px solid #9173c8;outline-offset:3px}
+#history-status {font-size:12px;color:var(--muted);overflow-wrap:anywhere;line-height:1.8;margin-bottom:12px}
+.history-card {padding:16px;border:1px solid var(--line);background:white;border-radius:14px;margin-top:12px}
+.history-card h4 {font-size:13px;overflow-wrap:anywhere}.history-card p,.history-empty {font-size:11px;color:var(--muted);line-height:1.8;margin-top:7px}
+.history-card>div {display:flex;justify-content:space-between;margin-top:12px}.history-card button {font-size:11px;border:0;background:transparent;color:var(--ink);cursor:pointer}

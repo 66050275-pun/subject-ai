@@ -11,7 +11,7 @@ def frontend_html():
     for name in ('utilities.css', 'app.css'):
         css = (BASE_DIR / 'static' / name).read_text()
         html = html.replace('<link rel="stylesheet" href="/static/' + name + '">', '<style>' + css + '</style>')
-    for name in ('progress.js', 'settings.js', 'graph.js'):
+    for name in ('progress.js', 'settings.js', 'history.js', 'graph.js'):
         script = (BASE_DIR / 'static' / name).read_text()
         html = html.replace('<script src="/static/' + name + '"></script>', '<script>' + script + '</script>')
     policy = html_module.escape(content_policy(html), quote=True)
