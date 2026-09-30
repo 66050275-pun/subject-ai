@@ -19,6 +19,7 @@ class Reference:
     title: str
     year: str | None
     number: int | None = None
+    doi: str | None = None
 
 
 _HEADING_RE = re.compile(
@@ -32,12 +33,14 @@ _END_HEADING_RE = re.compile(
     r"supplementary\s+materials?)\s*:?\s*$",
     re.IGNORECASE,
 )
-_NUMBERED_RE = re.compile(r"^\s*(?:\[(\d{1,4})\]|\(?\d{1,4}[.)])\s+\S")
+_NUMBERED_RE = re.compile(r"^\s*(?:\[(\d{1,3})\]|\(?\d{1,3}[.)])\s+\S")
 _NUMBERED_ENTRY_RE = re.compile(
-    r"^\s*(?:\[(?P<bracket>\d{1,4})\]|\(?(?P<plain>\d{1,4})[.)])\s+(?P<text>\S.*)$"
+    r"^\s*(?:\[(?P<bracket>\d{1,3})\]|\(?(?P<plain>\d{1,3})[.)])\s+(?P<text>\S.*)$"
 )
+_BRACKETED_ENTRY_RE = re.compile(r"^\s*\[(?P<number>\d{1,3})\]\s+(?P<text>\S.*)$")
 _BIB_DEST_RE = re.compile(r"(?:bib|reference)(\d+)$", re.IGNORECASE)
 _QUOTED_TITLE_RE = re.compile(r"[“\"‘]([^”\"’]{8,}?)[”\"’]")
+_DOI_RE = re.compile(r"\b10\.\d{4,9}/[^\s<>\]\[{}\"']+", re.IGNORECASE)
 _YEAR_RE = re.compile(r"(?<!\d)((?:18|19|20)\d{2})([a-z])?(?!\d)")
 _AUTHOR_YEAR_RE = re.compile(
     r"^[A-ZÀ-ÖØ-Þ][^\n]{0,140}?(?:\(\s*)?(?:18|19|20)\d{2}[a-z]?\)?(?=[.,;:\s]|$)"
@@ -134,7 +137,17 @@ def _title_and_year(text: str) -> tuple[str, str | None]:
     candidate = re.sub(r"^(?:title:\s*)", "", candidate, flags=re.IGNORECASE)
     if len(candidate) > 300:
         candidate = candidate[:300].rsplit(" ", 1)[0]
-    return candidate or cleaned[:300], year
+    # A failed parse often lands on a journal abbreviation, page range, or
+    # article number. Keep those citations intact, but don't present metadata as
+    # if it were a paper title.
+    words = re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ]{2,}", candidate)
+    if (not quoted_title and len(words) < 4) or re.search(
+        r"(?:https?://|10\.\d{4,9}/|\b(?:vol(?:ume)?|pp?|pages?)\.?\s*\d|\b\d{2,4}\s*[-–—]\s*\d{2,4}\b)",
+        candidate,
+        re.IGNORECASE,
+    ):
+        candidate = ""
+    return candidate, year
 
 
 def _split_entries(section: str) -> list[str]:
@@ -179,6 +192,48 @@ def _split_numbered_entries(
     section: str, repeated_lines: set[str]
 ) -> list[tuple[int, str]]:
     """Join wrapped numbered references, even when PDF layout inserts blanks."""
+    def collect(pattern: re.Pattern[str], *, bracketed_only: bool) -> list[tuple[int, str]]:
+        entries: dict[int, str] = {}
+        current_number: int | None = None
+        current: list[str] = []
+
+        def finish() -> None:
+            nonlocal current_number
+            value = re.sub(r"\s+", " ", " ".join(current)).strip()
+            if current_number is not None and len(value) >= 20:
+                entries.setdefault(current_number, value)
+            current_number = None
+            current.clear()
+
+        for raw_line in section.splitlines():
+            line = re.sub(r"\s+", " ", raw_line).strip()
+            if not line or line.casefold() in repeated_lines:
+                continue
+            match = pattern.match(line)
+            if match:
+                finish()
+                number = match.group("number") if bracketed_only else (
+                    match.group("bracket") or match.group("plain")
+                )
+                current_number = int(number)
+                current.append(match.group("text"))
+            elif current_number is not None:
+                current.append(line)
+        finish()
+
+        if not entries:
+            return []
+        numbers = sorted(entries)
+        if numbers[0] != 1 or len(numbers) < 3 or len(numbers) / numbers[-1] < 0.75:
+            return []
+        return [(number, entries[number]) for number in numbers]
+
+    # Bracketed labels are unambiguous. Prefer them so a wrapped journal date
+    # such as "(2023)" cannot be mistaken for a new reference number.
+    bracketed = collect(_BRACKETED_ENTRY_RE, bracketed_only=True)
+    if bracketed:
+        return bracketed
+
     entries: dict[int, str] = {}
     current_number: int | None = None
     current: list[str] = []
@@ -231,8 +286,10 @@ def _parse_references(page_text: list[str]) -> list[Reference]:
     references: list[Reference] = []
     for number, entry in entries:
         title, year = _title_and_year(entry)
+        doi_match = _DOI_RE.search(entry)
+        doi = doi_match.group(0).rstrip(".,;:)") if doi_match else None
         references.append(
-            Reference(original_text=entry, title=title, year=year, number=number)
+            Reference(original_text=entry, title=title, year=year, number=number, doi=doi)
         )
     return references
 
@@ -251,6 +308,29 @@ def extract_references(pdf_bytes: bytes) -> list[Reference]:
             return _parse_references(content_order_pages)
         except ExtractionError:
             raise visual_order_error
+
+
+def extract_summary_text(pdf_bytes: bytes, *, max_chars: int = 18_000) -> str:
+    """Extract bounded body text, omitting the bibliography when detectable."""
+    pages = _extract_text(pdf_bytes)
+    text = "\n".join(pages)
+    lines = text.splitlines()
+    heading_at: int | None = None
+    for index, line in enumerate(lines):
+        if _HEADING_RE.fullmatch(" ".join(line.split())):
+            heading_at = index
+    if heading_at is not None:
+        text = "\n".join(lines[:heading_at])
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+    if not text:
+        raise ExtractionError("ไม่พบข้อความเนื้อหาสำหรับสรุป")
+    if len(text) > max_chars:
+        marker = "\n\n[...ตัดเนื้อหาส่วนกลางเพื่อจำกัดค่าใช้จ่าย...]\n\n"
+        body_size = max(0, max_chars - len(marker))
+        head_size = int(body_size * 0.72)
+        tail_size = body_size - head_size
+        text = text[:head_size] + marker + text[-tail_size:]
+    return text
 
 
 def extract_citation_counts(

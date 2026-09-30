@@ -1,6 +1,8 @@
 # PaperRef Finder
 
-PaperRef Finder extracts a bibliography from a text-based research PDF, combines metadata from Crossref, OpenAlex, and Semantic Scholar, and searches for Open Access PDFs. Results include source links and a Google Scholar fallback when no direct match is found. When the PDF contains internal links from in-text citations to numbered references, the app counts those links and provides a separate citation view. Its interactive reference graph lays the uploaded paper above its bibliography in a draggable tree; drag the background to pan and scroll to zoom. It runs locally with Python 3.10+ and needs no paid API key.
+PaperRef Finder accepts a research PDF or DOI. For PDFs it extracts numbered or author-date bibliography entries, counts internal citation links when the PDF includes them, and resolves titles, DOIs, paper records, and Open Access PDFs through Crossref, OpenAlex, and Semantic Scholar. When a reference has no reliable title in the bibliography, it searches with the full citation and uses the provider's title when available. The Google Scholar fallback searches the matched title or full citation instead of a short parsing fragment. DOI lookup queries the same scholarly metadata sources directly.
+
+The reference graph is draggable and zoomable. AI summaries can be requested for a PDF or DOI abstract using the user's own OpenAI API key. The key is sent only for that request and is not saved by the app. A PDF's extracted body text is sent to OpenAI only after the user presses the summary button; DOI mode retrieves an abstract from Crossref/OpenAlex and sends that abstract to OpenAI. OpenAI usage is billed to the user's account.
 
 ## Run locally
 
@@ -13,23 +15,28 @@ python -m pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-Open <http://127.0.0.1:8000>. The health endpoint is <http://127.0.0.1:8000/health> and the interactive API documentation is at <http://127.0.0.1:8000/docs>.
+Open <http://127.0.0.1:8000>. The health endpoint is <http://127.0.0.1:8000/health> and interactive API documentation is at <http://127.0.0.1:8000/docs>.
 
-## Test the workflow
+## Use the app
 
-1. Open the page and select or drag in a research PDF no larger than 50 MB. Use a PDF with a selectable text layer and a References, Bibliography, Works Cited, or Literature Cited heading near the end.
-2. Click **ค้นหารายการอ้างอิง** and wait for Crossref/OpenAlex lookups. The results show the original citation, extracted title and year, any matched title and DOI, a direct paper link, an Open Access PDF link when available, and a Google Scholar fallback.
-3. Use the graph to jump to a reference. Drag nodes to rearrange them, drag the background to pan, and use the mouse wheel or zoom buttons to change scale. The References and Citation tabs separate the bibliography from references linked by in-text citations. Citation counts use internal PDF links, so citation details are unavailable when a PDF does not include those links.
-4. Search the result list, then use the CSV and JSON buttons to download the results.
-5. To check error handling, try a non-PDF file, a PDF over 50 MB, and a scanned PDF without selectable text. The app should report each problem clearly.
-6. For an API-only check, run `curl -F 'file=@/path/to/research.pdf' http://127.0.0.1:8000/api/references` in another terminal.
+1. Enter a DOI or DOI URL to find one paper, or select/drag in a research PDF up to 50 MB. PDF reference extraction works best with selectable text and a References, Bibliography, Works Cited, or Literature Cited section near the end.
+2. Click **ค้นหารายการอ้างอิง** for a PDF or **ค้นหาด้วย DOI** for one DOI. Bibliography lines are queried as complete citations when their title is missing or uncertain.
+3. To request an AI summary, select a PDF or enter a DOI, enter your own OpenAI API key, and click **สรุปงานวิจัย**. The key is cleared from the page after the request. DOI summaries require an abstract indexed in Crossref or OpenAlex; if none is available, provide the PDF instead. You can choose another OpenAI model in the model field.
+4. Use the graph to jump to a reference. Drag nodes to rearrange them, drag the background to pan, and use the wheel or zoom buttons to change scale. The References and Citation tabs separate the bibliography from PDF-linked citations.
+5. Search the result list, then export results as CSV or JSON.
 
-Crossref's polite-pool contact is optional. Set `PAPERREF_CONTACT_EMAIL` to your own contact address before starting Uvicorn to include it in the Crossref User-Agent. The default User-Agent identifies the application and does not invent an email address. The browser loads Tailwind CSS and the Noto Sans Thai/DM Sans fonts from their public CDNs.
+Crossref's polite-pool contact is optional. Set `PAPERREF_CONTACT_EMAIL` before starting Uvicorn to include it in the Crossref User-Agent. The browser loads Tailwind CSS and fonts from public CDNs.
+
+## API endpoints
+
+- `POST /api/references` — PDF upload, bibliography extraction, and metadata resolution
+- `POST /api/doi` — DOI metadata lookup (`doi` form field)
+- `POST /api/summarize` — multipart PDF or DOI and optional `model` form field; provide the API key using the `X-OpenAI-API-Key` header
 
 ## Layout
 
-- `main.py` — FastAPI upload endpoint, size/type checks, and static app route
-- `extractor.py` — PyMuPDF extraction, numbered bibliography parsing, in-text citation-link counting, and title/year heuristics
-- `resolver.py` — bounded asynchronous Crossref/OpenAlex/Semantic Scholar lookup
-- `static/index.html` — responsive Tailwind/vanilla JavaScript interface and CSV/JSON export
+- `main.py` — FastAPI endpoints, upload checks, and static app route
+- `extractor.py` — PyMuPDF extraction, bibliography parsing, citation-link counting, DOI extraction, and bounded summary text
+- `resolver.py` — Crossref/OpenAlex/Semantic Scholar lookup and DOI metadata retrieval
+- `static/index.html` — responsive interface, interactive graph, and CSV/JSON export
 - `requirements.txt` — Python dependencies

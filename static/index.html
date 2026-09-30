@@ -40,10 +40,18 @@
         <span class="h-1.5 w-1.5 rounded-full bg-teal-600"></span> Crossref · OpenAlex · Semantic Scholar
       </div>
       <h1 class="text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">ตามหาเปเปอร์ที่อ้างอิง<br class="hidden sm:block">ได้ในไม่กี่คลิก</h1>
-      <p class="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">อัปโหลดงานวิจัย PDF เพื่อแยกรายการอ้างอิง แล้วค้นหา DOI และลิงก์ดาวน์โหลด Open Access อัตโนมัติ</p>
+      <p class="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">อัปโหลด PDF เพื่อแยกรายการอ้างอิง หรือค้นหาเปเปอร์ด้วย DOI แล้วดูชื่อเรื่องและลิงก์ Open Access จากหลายแหล่ง</p>
     </section>
 
     <section class="mx-auto mt-10 max-w-3xl" aria-label="อัปโหลดงานวิจัย">
+      <div class="mb-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <label for="doi-input" class="block text-sm font-semibold text-slate-900">ค้นหางานวิจัยจาก DOI</label>
+        <p class="mt-1 text-sm text-slate-500">วาง DOI เช่น <span class="font-mono">10.1016/j.jpowsour.2024.234567</span> หรือ DOI URL</p>
+        <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+          <input id="doi-input" type="text" inputmode="url" placeholder="10.xxxx/... หรือ https://doi.org/..." class="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100">
+          <button id="doi-button" type="button" class="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">ค้นหาด้วย DOI</button>
+        </div>
+      </div>
       <input id="file-input" type="file" accept=".pdf,application/pdf" class="sr-only">
       <div id="dropzone" role="button" tabindex="0" aria-describedby="upload-hint" class="group cursor-pointer rounded-2xl border-2 border-dashed border-slate-300 bg-white px-6 py-10 text-center shadow-sm transition hover:border-teal-600 hover:bg-teal-50/40 sm:px-12 sm:py-12">
         <div class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-teal-50 text-teal-700 transition group-hover:bg-teal-100">
@@ -63,6 +71,26 @@
       </button>
       <div id="loading-track" class="mt-3 hidden h-1 overflow-hidden rounded-full bg-teal-100"><div class="indeterminate h-full w-1/3 rounded-full bg-teal-600"></div></div>
       <div id="alert" role="alert" class="mt-4 hidden rounded-xl border px-4 py-3 text-sm"></div>
+      <div class="mt-5 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-5 sm:p-6">
+        <div>
+          <h2 class="font-semibold text-slate-900">สรุปงานวิจัยด้วย AI</h2>
+          <p class="mt-1 text-sm leading-6 text-slate-600">ใช้ PDF ที่เลือกไว้ หรือใช้ DOI ด้านบนถ้ายังไม่ได้เลือก PDF ต้องใส่ OpenAI API key ของคุณเอง</p>
+        </div>
+        <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_13rem]">
+          <label class="block text-sm font-medium text-slate-700">OpenAI API key
+            <input id="openai-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-…" class="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+          </label>
+          <label class="block text-sm font-medium text-slate-700">โมเดล
+            <input id="summary-model" type="text" value="gpt-4o-mini" autocomplete="off" class="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+          </label>
+        </div>
+        <button id="summary-button" type="button" class="mt-3 inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-800 disabled:cursor-wait disabled:opacity-60">
+          <svg id="summary-spinner" aria-hidden="true" class="spin hidden h-4 w-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".25" stroke-width="3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+          <span id="summary-button-label">สรุปงานวิจัย</span>
+        </button>
+        <p class="mt-3 text-xs leading-5 text-slate-500">เมื่อกดสรุป ข้อความ PDF จะถูกส่งไปยัง OpenAI หรือจะส่ง abstract จาก DOI ผ่าน Crossref/OpenAlex ก่อนส่งให้ OpenAI คีย์ใช้เฉพาะคำขอนี้และไม่บันทึกในแอป ค่าใช้ API คิดกับบัญชี OpenAI ของคุณ</p>
+        <div id="summary-output" class="mt-4 hidden whitespace-pre-wrap rounded-xl border border-indigo-100 bg-white p-4 text-sm leading-7 text-slate-700"></div>
+      </div>
     </section>
 
     <section id="results-section" class="mt-14 hidden" aria-label="ผลการค้นหา">
@@ -201,6 +229,29 @@
         document.getElementById('loading-track').classList.toggle('hidden', !busy);
         document.getElementById('button-label').textContent = busy ? 'กำลังสกัดและค้นหาลิงก์...' : 'ค้นหารายการอ้างอิง';
       }
+      function displayPayload(payload) {
+        allResults = payload.results || [];
+        sourceName = payload.filename || 'references';
+        citationLinksAvailable = Boolean(payload.citation_links_available);
+        citationLinkCount = Number(payload.citation_link_count || 0);
+        citedReferenceCount = Number(payload.cited_reference_count || 0);
+        document.getElementById('result-filename').textContent = sourceName;
+        document.getElementById('total-stat').textContent = payload.total_references ?? allResults.length;
+        document.getElementById('links-stat').textContent = payload.direct_links ?? allResults.filter((item) => item.paper_url).length;
+        document.getElementById('citation-stat').textContent = citationLinksAvailable ? citationLinkCount : '—';
+        document.getElementById('citation-stat-caption').textContent = citationLinksAvailable
+          ? `${citedReferenceCount} references มีลิงก์ citation`
+          : 'PDF ไม่มีลิงก์ citation ภายใน';
+        document.getElementById('citations-tab').disabled = !citationLinksAvailable;
+        document.getElementById('citations-tab').classList.toggle('cursor-not-allowed', !citationLinksAvailable);
+        document.getElementById('citations-tab').classList.toggle('opacity-50', !citationLinksAvailable);
+        document.getElementById('citation-unavailable').classList.toggle('hidden', citationLinksAvailable);
+        document.getElementById('search-input').value = '';
+        setView('references');
+        renderNetwork();
+        resultSection.classList.remove('hidden');
+        resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
 
       dropzone.addEventListener('click', (event) => {
         if (event.target.closest('button')) return;
@@ -231,30 +282,68 @@
           const response = await fetch('/api/references', { method: 'POST', body: form });
           const payload = await response.json();
           if (!response.ok) throw new Error(payload.detail || 'ประมวลผลไฟล์ไม่สำเร็จ');
-          allResults = payload.results || [];
-          sourceName = selectedFile.name.replace(/\.pdf$/i, '') || 'references';
-          citationLinksAvailable = Boolean(payload.citation_links_available);
-          citationLinkCount = Number(payload.citation_link_count || 0);
-          citedReferenceCount = Number(payload.cited_reference_count || 0);
-          document.getElementById('result-filename').textContent = payload.filename;
-          document.getElementById('total-stat').textContent = payload.total_references;
-          document.getElementById('links-stat').textContent = payload.direct_links;
-          document.getElementById('citation-stat').textContent = citationLinksAvailable ? citationLinkCount : '—';
-          document.getElementById('citation-stat-caption').textContent = citationLinksAvailable
-            ? `${citedReferenceCount} references มีลิงก์ citation`
-            : 'PDF ไม่มีลิงก์ citation ภายใน';
-          document.getElementById('citations-tab').disabled = !citationLinksAvailable;
-          document.getElementById('citations-tab').classList.toggle('cursor-not-allowed', !citationLinksAvailable);
-          document.getElementById('citations-tab').classList.toggle('opacity-50', !citationLinksAvailable);
-          document.getElementById('citation-unavailable').classList.toggle('hidden', citationLinksAvailable);
-          document.getElementById('search-input').value = '';
-          setView('references');
-          renderNetwork();
-          resultSection.classList.remove('hidden');
-          resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          payload.filename = selectedFile.name.replace(/\.pdf$/i, '') || 'references';
+          displayPayload(payload);
         } catch (error) {
           showAlert(error.message || 'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองอีกครั้ง');
         } finally { setBusy(false); }
+      });
+
+      document.getElementById('doi-button').addEventListener('click', async () => {
+        const doi = document.getElementById('doi-input').value.trim();
+        if (!doi) { showAlert('กรุณากรอก DOI ก่อนค้นหา'); return; }
+        hideAlert();
+        const button = document.getElementById('doi-button');
+        button.disabled = true; button.textContent = 'กำลังค้นหา DOI...';
+        try {
+          const form = new FormData(); form.append('doi', doi);
+          const response = await fetch('/api/doi', { method: 'POST', body: form });
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.detail || 'ค้นหา DOI ไม่สำเร็จ');
+          displayPayload(payload);
+        } catch (error) {
+          showAlert(error.message || 'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองอีกครั้ง');
+        } finally {
+          button.disabled = false; button.textContent = 'ค้นหาด้วย DOI';
+        }
+      });
+      document.getElementById('doi-input').addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') document.getElementById('doi-button').click();
+      });
+
+      document.getElementById('summary-button').addEventListener('click', async () => {
+        const keyInput = document.getElementById('openai-key');
+        const apiKey = keyInput.value.trim();
+        const doi = document.getElementById('doi-input').value.trim();
+        if (!apiKey) { showAlert('กรุณากรอก OpenAI API key ของคุณก่อน'); return; }
+        if (!selectedFile && !doi) { showAlert('เลือก PDF หรือกรอก DOI ก่อนสรุป'); return; }
+        hideAlert();
+        const button = document.getElementById('summary-button');
+        const output = document.getElementById('summary-output');
+        button.disabled = true;
+        document.getElementById('summary-spinner').classList.remove('hidden');
+        document.getElementById('summary-button-label').textContent = 'กำลังสรุป...';
+        output.classList.add('hidden'); output.textContent = '';
+        const form = new FormData();
+        if (selectedFile) form.append('file', selectedFile);
+        else form.append('doi', doi);
+        form.append('model', document.getElementById('summary-model').value.trim() || 'gpt-4o-mini');
+        try {
+          const response = await fetch('/api/summarize', {
+            method: 'POST', body: form, headers: { 'X-OpenAI-API-Key': apiKey }
+          });
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.detail || 'สรุปงานวิจัยไม่สำเร็จ');
+          output.textContent = `${payload.source} · ${payload.model}\n\n${payload.summary}`;
+          output.classList.remove('hidden');
+        } catch (error) {
+          showAlert(error.message || 'เชื่อมต่อ OpenAI ไม่สำเร็จ กรุณาลองอีกครั้ง');
+        } finally {
+          keyInput.value = '';
+          button.disabled = false;
+          document.getElementById('summary-spinner').classList.add('hidden');
+          document.getElementById('summary-button-label').textContent = 'สรุปงานวิจัย';
+        }
       });
 
       function makeLink(label, url, style) {
@@ -282,7 +371,8 @@
           number.textContent = String(item.reference_number).padStart(2, '0');
           const content = document.createElement('div'); content.className = 'min-w-0 flex-1';
           const title = document.createElement('h4'); title.className = 'font-semibold leading-6 text-slate-900';
-          title.textContent = item.matched_title || item.title || 'ไม่สามารถแยกชื่อเรื่องได้';
+          const citationTitle = String(item.original_text || '').replace(/^\s*(?:\[\d+\]|\d+[.)])\s*/, '');
+          title.textContent = item.matched_title || item.title || citationTitle || 'ไม่สามารถแยกชื่อเรื่องได้';
           content.append(title);
           const meta = document.createElement('p'); meta.className = 'mt-1 text-xs text-slate-500';
           meta.textContent = [item.year, item.doi ? 'DOI: ' + item.doi : null].filter(Boolean).join(' · ') || 'ยังไม่พบ DOI';
