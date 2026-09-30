@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8fafc">
+  <meta name="description" content="ค้นหา DOI และ PDF สำหรับรายการอ้างอิงในงานวิจัยของคุณ">
+  <title>PaperRef Finder — ค้นหาลิงก์งานวิจัย</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { color-scheme: light; font-family: "DM Sans", "Noto Sans Thai", sans-serif; }
+    body { min-height: 100vh; background: #f8fafc; }
+    .drop-active { border-color: #0f766e !important; background: #f0fdfa !important; }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .indeterminate { animation: loading 1.4s ease-in-out infinite; }
+    @keyframes loading { 0% { transform: translateX(-110%); } 100% { transform: translateX(330%); } }
+    .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  </style>
+</head>
+<body class="text-slate-800 antialiased">
+  <header class="border-b border-slate-200/80 bg-white">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
+      <a href="/" class="flex items-center gap-3" aria-label="PaperRef Finder หน้าแรก">
+        <span class="grid h-10 w-10 place-items-center rounded-xl bg-teal-700 text-white shadow-sm">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" class="h-6 w-6"><path d="M7 3.75h7l4 4v12.5H7a2 2 0 0 1-2-2v-13a1.5 1.5 0 0 1 2-1.5Z" stroke="currentColor" stroke-width="1.7"/><path d="M14 4v4h4M8.5 12h7M8.5 15.5h7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </span>
+        <span class="text-lg font-bold tracking-tight text-slate-900">PaperRef <span class="text-teal-700">Finder</span></span>
+      </a>
+      <span class="hidden rounded-full border border-teal-100 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-800 sm:inline-flex">Academic link finder</span>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-5 pb-20 pt-12 sm:px-8 sm:pt-16">
+    <section class="mx-auto max-w-3xl text-center">
+      <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-800 ring-1 ring-inset ring-teal-100">
+        <span class="h-1.5 w-1.5 rounded-full bg-teal-600"></span> ทำงานด้วย Crossref และ OpenAlex
+      </div>
+      <h1 class="text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">ตามหาเปเปอร์ที่อ้างอิง<br class="hidden sm:block">ได้ในไม่กี่คลิก</h1>
+      <p class="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">อัปโหลดงานวิจัย PDF เพื่อแยกรายการอ้างอิง แล้วค้นหา DOI และลิงก์ดาวน์โหลด Open Access อัตโนมัติ</p>
+    </section>
+
+    <section class="mx-auto mt-10 max-w-3xl" aria-label="อัปโหลดงานวิจัย">
+      <input id="file-input" type="file" accept=".pdf,application/pdf" class="sr-only">
+      <div id="dropzone" role="button" tabindex="0" aria-describedby="upload-hint" class="group cursor-pointer rounded-2xl border-2 border-dashed border-slate-300 bg-white px-6 py-10 text-center shadow-sm transition hover:border-teal-600 hover:bg-teal-50/40 sm:px-12 sm:py-12">
+        <div class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-teal-50 text-teal-700 transition group-hover:bg-teal-100">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" class="h-7 w-7"><path d="M12 15V4m0 0L8 8m4-4 4 4M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h2 class="mt-5 text-lg font-semibold text-slate-900">ลากไฟล์ PDF มาวางที่นี่</h2>
+        <p class="mt-1 text-sm text-slate-500">หรือ <span class="font-semibold text-teal-700">เลือกไฟล์จากอุปกรณ์</span></p>
+        <p id="upload-hint" class="mt-4 text-xs text-slate-400">รองรับไฟล์ PDF ขนาดสูงสุด 50 MB</p>
+      </div>
+      <div id="file-row" class="mt-3 hidden items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+        <span id="file-name" class="truncate font-medium text-slate-700"></span>
+        <button id="remove-file" type="button" class="ml-4 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800">เปลี่ยนไฟล์</button>
+      </div>
+      <button id="analyze-button" type="button" disabled class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3.5 font-semibold text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none">
+        <svg id="button-spinner" aria-hidden="true" class="spin hidden h-5 w-5" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".25" stroke-width="3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+        <span id="button-label">ค้นหารายการอ้างอิง</span>
+      </button>
+      <div id="loading-track" class="mt-3 hidden h-1 overflow-hidden rounded-full bg-teal-100"><div class="indeterminate h-full w-1/3 rounded-full bg-teal-600"></div></div>
+      <div id="alert" role="alert" class="mt-4 hidden rounded-xl border px-4 py-3 text-sm"></div>
+    </section>
+
+    <section id="results-section" class="mt-14 hidden" aria-label="ผลการค้นหา">
+      <div class="flex flex-col justify-between gap-5 border-b border-slate-200 pb-6 sm:flex-row sm:items-end">
+        <div>
+          <p class="text-sm font-medium text-teal-700">ผลการวิเคราะห์</p>
+          <h2 class="mt-1 text-2xl font-bold tracking-tight text-slate-950">รายการอ้างอิงของคุณ</h2>
+          <p id="result-filename" class="mt-1 max-w-lg truncate text-sm text-slate-500"></p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button id="export-csv" type="button" class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+            <span aria-hidden="true">↓</span> ส่งออก CSV
+          </button>
+          <button id="export-json" type="button" class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+            <span aria-hidden="true">{ }</span> ส่งออก JSON
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-6 grid gap-3 sm:grid-cols-2">
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-sm text-slate-500">ตรวจพบ References</p>
+          <p id="total-stat" class="mt-1 text-3xl font-bold tracking-tight text-slate-950">0</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-sm text-slate-500">พบลิงก์ไปยังเปเปอร์</p>
+          <p id="links-stat" class="mt-1 text-3xl font-bold tracking-tight text-teal-700">0</p>
+        </div>
+      </div>
+
+      <div class="mt-8 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <h3 class="font-semibold text-slate-900">รายการอ้างอิง <span id="visible-count" class="font-normal text-slate-500"></span></h3>
+        <label class="relative block sm:w-80">
+          <span class="sr-only">ค้นหาในรายการอ้างอิง</span>
+          <svg aria-hidden="true" class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none"><circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <input id="search-input" type="search" placeholder="ค้นหาชื่อเปเปอร์ หรือ DOI..." class="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm outline-none placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100">
+        </label>
+      </div>
+      <div id="results-list" class="mt-4 space-y-3"></div>
+      <div id="empty-search" class="hidden rounded-xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center text-sm text-slate-500">ไม่พบรายการที่ตรงกับคำค้น</div>
+    </section>
+
+    <footer class="mt-16 border-t border-slate-200 pt-6 text-center text-xs leading-5 text-slate-400">ผลการค้นหาอัตโนมัติอาจไม่ตรงทุกครั้ง โปรดตรวจสอบรายละเอียดกับแหล่งข้อมูลต้นฉบับ</footer>
+  </main>
+
+  <script>
+    (() => {
+      const MAX_BYTES = 50 * 1024 * 1024;
+      const fileInput = document.getElementById('file-input');
+      const dropzone = document.getElementById('dropzone');
+      const analyzeButton = document.getElementById('analyze-button');
+      const alertBox = document.getElementById('alert');
+      const resultSection = document.getElementById('results-section');
+      const resultsList = document.getElementById('results-list');
+      let selectedFile = null;
+      let allResults = [];
+      let sourceName = 'references';
+
+      function showAlert(message, kind = 'error') {
+        alertBox.textContent = message;
+        alertBox.className = 'mt-4 rounded-xl border px-4 py-3 text-sm ' + (kind === 'success'
+          ? 'border-teal-200 bg-teal-50 text-teal-800'
+          : 'border-rose-200 bg-rose-50 text-rose-800');
+      }
+      function hideAlert() { alertBox.classList.add('hidden'); }
+
+      function chooseFile(file) {
+        hideAlert();
+        if (!file) return;
+        if (!(file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))) {
+          selectedFile = null; fileInput.value = ''; analyzeButton.disabled = true;
+          document.getElementById('file-row').classList.add('hidden');
+          showAlert('ไฟล์นี้ไม่ใช่ PDF กรุณาเลือกไฟล์ .pdf'); return;
+        }
+        if (file.size > MAX_BYTES) {
+          selectedFile = null; fileInput.value = ''; analyzeButton.disabled = true;
+          document.getElementById('file-row').classList.add('hidden');
+          showAlert('ไฟล์มีขนาดเกิน 50 MB กรุณาเลือกไฟล์ที่เล็กกว่านี้'); return;
+        }
+        selectedFile = file;
+        document.getElementById('file-name').textContent = file.name + ' · ' + (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+        document.getElementById('file-row').classList.remove('hidden');
+        document.getElementById('file-row').classList.add('flex');
+        analyzeButton.disabled = false;
+        resultSection.classList.add('hidden');
+      }
+      function setBusy(busy) {
+        analyzeButton.disabled = busy || !selectedFile;
+        document.getElementById('button-spinner').classList.toggle('hidden', !busy);
+        document.getElementById('loading-track').classList.toggle('hidden', !busy);
+        document.getElementById('button-label').textContent = busy ? 'กำลังสกัดและค้นหาลิงก์...' : 'ค้นหารายการอ้างอิง';
+      }
+
+      dropzone.addEventListener('click', (event) => {
+        if (event.target.closest('button')) return;
+        fileInput.click();
+      });
+      dropzone.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); fileInput.click(); }
+      });
+      fileInput.addEventListener('change', () => chooseFile(fileInput.files[0]));
+      document.getElementById('remove-file').addEventListener('click', () => {
+        fileInput.value = ''; selectedFile = null;
+        document.getElementById('file-row').classList.add('hidden');
+        analyzeButton.disabled = true; hideAlert();
+      });
+      ['dragenter', 'dragover'].forEach((eventName) => dropzone.addEventListener(eventName, (event) => {
+        event.preventDefault(); dropzone.classList.add('drop-active');
+      }));
+      ['dragleave', 'drop'].forEach((eventName) => dropzone.addEventListener(eventName, (event) => {
+        event.preventDefault(); dropzone.classList.remove('drop-active');
+      }));
+      dropzone.addEventListener('drop', (event) => chooseFile(event.dataTransfer.files[0]));
+
+      analyzeButton.addEventListener('click', async () => {
+        if (!selectedFile) return;
+        hideAlert(); setBusy(true);
+        const form = new FormData(); form.append('file', selectedFile);
+        try {
+          const response = await fetch('/api/references', { method: 'POST', body: form });
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.detail || 'ประมวลผลไฟล์ไม่สำเร็จ');
+          allResults = payload.results || [];
+          sourceName = selectedFile.name.replace(/\.pdf$/i, '') || 'references';
+          document.getElementById('result-filename').textContent = payload.filename;
+          document.getElementById('total-stat').textContent = payload.total_references;
+          document.getElementById('links-stat').textContent = payload.direct_links;
+          document.getElementById('search-input').value = '';
+          renderResults();
+          resultSection.classList.remove('hidden');
+          resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (error) {
+          showAlert(error.message || 'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองอีกครั้ง');
+        } finally { setBusy(false); }
+      });
+
+      function makeLink(label, url, style) {
+        const link = document.createElement('a'); link.href = url; link.target = '_blank';
+        link.rel = 'noopener noreferrer'; link.textContent = label;
+        link.className = 'inline-flex items-center rounded-lg px-3 py-2 text-xs font-semibold transition ' + style;
+        return link;
+      }
+      function renderResults() {
+        const query = document.getElementById('search-input').value.trim().toLowerCase();
+        const filtered = allResults.filter((item) => [item.title, item.matched_title, item.original_text, item.doi, item.year]
+          .some((value) => String(value || '').toLowerCase().includes(query)));
+        resultsList.replaceChildren();
+        document.getElementById('visible-count').textContent = `(${filtered.length} รายการ)`;
+        document.getElementById('empty-search').classList.toggle('hidden', filtered.length !== 0);
+        for (const [index, item] of filtered.entries()) {
+          const card = document.createElement('article');
+          card.className = 'rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5';
+          const top = document.createElement('div'); top.className = 'flex items-start gap-3';
+          const number = document.createElement('span'); number.className = 'grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-xs font-bold text-slate-600';
+          number.textContent = String(index + 1).padStart(2, '0');
+          const content = document.createElement('div'); content.className = 'min-w-0 flex-1';
+          const title = document.createElement('h4'); title.className = 'font-semibold leading-6 text-slate-900';
+          title.textContent = item.matched_title || item.title || 'ไม่สามารถแยกชื่อเรื่องได้';
+          content.append(title);
+          const meta = document.createElement('p'); meta.className = 'mt-1 text-xs text-slate-500';
+          meta.textContent = [item.year, item.doi ? 'DOI: ' + item.doi : null].filter(Boolean).join(' · ') || 'ยังไม่พบ DOI';
+          content.append(meta); top.append(number, content); card.append(top);
+          const original = document.createElement('p'); original.className = 'line-clamp-3 mt-3 text-sm leading-6 text-slate-600';
+          original.textContent = item.original_text; card.append(original);
+          const actions = document.createElement('div'); actions.className = 'mt-4 flex flex-wrap gap-2';
+          if (item.paper_url) actions.append(makeLink('↗  ดู Paper', item.paper_url, 'bg-teal-700 text-white hover:bg-teal-800'));
+          if (item.oa_pdf_url) actions.append(makeLink('↓  ดาวน์โหลด PDF', item.oa_pdf_url, 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'));
+          if (item.scholar_url) actions.append(makeLink('⌕  Google Scholar', item.scholar_url, 'bg-slate-100 text-slate-700 hover:bg-slate-200'));
+          card.append(actions); resultsList.append(card);
+        }
+      }
+      document.getElementById('search-input').addEventListener('input', renderResults);
+
+      function downloadBlob(contents, filename, type) {
+        const blob = new Blob([contents], { type }); const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a'); anchor.href = url; anchor.download = filename;
+        document.body.append(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      document.getElementById('export-json').addEventListener('click', () => {
+        downloadBlob(JSON.stringify(allResults, null, 2), sourceName + '-references.json', 'application/json;charset=utf-8');
+      });
+      document.getElementById('export-csv').addEventListener('click', () => {
+        const columns = ['original_text', 'title', 'year', 'matched_title', 'doi', 'paper_url', 'oa_pdf_url', 'scholar_url'];
+        const escape = (value) => {
+          let text = String(value ?? '');
+          if (/^\s*[=+@-]/.test(text)) text = "'" + text;
+          return '"' + text.replace(/"/g, '""') + '"';
+        };
+        const csv = [columns, ...allResults.map((item) => columns.map((key) => item[key] ?? ''))]
+          .map((row) => row.map(escape).join(',')).join('\r\n');
+        downloadBlob('\ufeff' + csv, sourceName + '-references.csv', 'text/csv;charset=utf-8');
+      });
+    })();
+  </script>
+</body>
+</html>
