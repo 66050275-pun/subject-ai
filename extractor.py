@@ -37,7 +37,7 @@ _AUTHOR_YEAR_RE = re.compile(
 )
 
 
-def _extract_text(pdf_bytes: bytes) -> list[str]:
+def _extract_text(pdf_bytes: bytes, *, sort: bool = True) -> list[str]:
     try:
         document = fitz.open(stream=pdf_bytes, filetype="pdf")
     except (fitz.FileDataError, ValueError, RuntimeError) as exc:
@@ -46,7 +46,7 @@ def _extract_text(pdf_bytes: bytes) -> list[str]:
     try:
         if document.page_count == 0:
             raise ExtractionError("ไฟล์ PDF ไม่มีหน้าเอกสาร")
-        page_text = [page.get_text("text", sort=True) for page in document]
+        page_text = [page.get_text("text", sort=sort) for page in document]
     except (fitz.FileDataError, RuntimeError) as exc:
         raise ExtractionError("อ่านข้อความจาก PDF ไม่สำเร็จ") from exc
     finally:
@@ -152,10 +152,8 @@ def _split_entries(section: str) -> list[str]:
     return [entry for entry in entries if len(entry) >= 20]
 
 
-def extract_references(pdf_bytes: bytes) -> list[Reference]:
-    """Extract references and best-effort title/year fields from a PDF."""
-    pages = _extract_text(pdf_bytes)
-    section = _reference_section(pages)
+def _parse_references(page_text: list[str]) -> list[Reference]:
+    section = _reference_section(page_text)
     entries = _split_entries(section)
     if not entries:
         raise ExtractionError("พบหัวข้อรายการอ้างอิง แต่ไม่พบรายการที่มีข้อมูลเพียงพอ")
@@ -165,3 +163,19 @@ def extract_references(pdf_bytes: bytes) -> list[Reference]:
         title, year = _title_and_year(entry)
         references.append(Reference(original_text=entry, title=title, year=year))
     return references
+
+
+def extract_references(pdf_bytes: bytes) -> list[Reference]:
+    """Extract references and best-effort title/year fields from a PDF."""
+    pages = _extract_text(pdf_bytes)
+    try:
+        return _parse_references(pages)
+    except ExtractionError as visual_order_error:
+        # In multi-column PDFs, visual sorting can merge a section heading with
+        # adjacent text from the other column. Retry the PDF's content order,
+        # which often keeps headings and bibliography entries intact.
+        try:
+            content_order_pages = _extract_text(pdf_bytes, sort=False)
+            return _parse_references(content_order_pages)
+        except ExtractionError:
+            raise visual_order_error
