@@ -37,6 +37,7 @@ _NUMBERED_ENTRY_RE = re.compile(
     r"^\s*(?:\[(?P<bracket>\d{1,4})\]|\(?(?P<plain>\d{1,4})[.)])\s+(?P<text>\S.*)$"
 )
 _BIB_DEST_RE = re.compile(r"(?:bib|reference)(\d+)$", re.IGNORECASE)
+_QUOTED_TITLE_RE = re.compile(r"[“\"‘]([^”\"’]{8,}?)[”\"’]")
 _YEAR_RE = re.compile(r"(?<!\d)((?:18|19|20)\d{2})([a-z])?(?!\d)")
 _AUTHOR_YEAR_RE = re.compile(
     r"^[A-ZÀ-ÖØ-Þ][^\n]{0,140}?(?:\(\s*)?(?:18|19|20)\d{2}[a-z]?\)?(?=[.,;:\s]|$)"
@@ -113,7 +114,10 @@ def _title_and_year(text: str) -> tuple[str, str | None]:
     year_match = _YEAR_RE.search(cleaned)
     year = year_match.group(1) if year_match else None
 
-    if year_match:
+    quoted_title = _QUOTED_TITLE_RE.search(cleaned)
+    if quoted_title:
+        candidate = quoted_title.group(1)
+    elif year_match:
         tail = cleaned[year_match.end() :].lstrip(" )].,;:")
         # Author-date styles put the title right after the year. In numbered
         # styles, the title generally appears before the publication year.

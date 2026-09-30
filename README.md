@@ -1,6 +1,6 @@
 # PaperRef Finder
 
-PaperRef Finder extracts a bibliography from a text-based research PDF, looks up its records in Crossref, and searches OpenAlex and Semantic Scholar for Open Access PDFs. Results include Google Scholar links even when no direct match is found. When the PDF contains internal links from in-text citations to numbered references, the app counts those links and provides a separate citation view. Its reference graph shows the uploaded paper and each item in its bibliography. It runs locally with Python 3.10+ and needs no paid API key.
+PaperRef Finder extracts a bibliography from a text-based research PDF, combines metadata from Crossref, OpenAlex, and Semantic Scholar, and searches for Open Access PDFs. Results include source links and a Google Scholar fallback when no direct match is found. When the PDF contains internal links from in-text citations to numbered references, the app counts those links and provides a separate citation view. Its interactive reference graph lays the uploaded paper above its bibliography in a draggable tree; drag the background to pan and scroll to zoom. It runs locally with Python 3.10+ and needs no paid API key.
 
 ## Run locally
 
@@ -19,7 +19,7 @@ Open <http://127.0.0.1:8000>. The health endpoint is <http://127.0.0.1:8000/heal
 
 1. Open the page and select or drag in a research PDF no larger than 50 MB. Use a PDF with a selectable text layer and a References, Bibliography, Works Cited, or Literature Cited heading near the end.
 2. Click **ค้นหารายการอ้างอิง** and wait for Crossref/OpenAlex lookups. The results show the original citation, extracted title and year, any matched title and DOI, a direct paper link, an Open Access PDF link when available, and a Google Scholar fallback.
-3. Use the graph to jump to a reference. The References and Citation tabs separate the bibliography from references linked by in-text citations. Citation counts use internal PDF links, so citation details are unavailable when a PDF does not include those links.
+3. Use the graph to jump to a reference. Drag nodes to rearrange them, drag the background to pan, and use the mouse wheel or zoom buttons to change scale. The References and Citation tabs separate the bibliography from references linked by in-text citations. Citation counts use internal PDF links, so citation details are unavailable when a PDF does not include those links.
 4. Search the result list, then use the CSV and JSON buttons to download the results.
 5. To check error handling, try a non-PDF file, a PDF over 50 MB, and a scanned PDF without selectable text. The app should report each problem clearly.
 6. For an API-only check, run `curl -F 'file=@/path/to/research.pdf' http://127.0.0.1:8000/api/references` in another terminal.
