@@ -79,12 +79,15 @@
         <label class="mt-4 block text-sm">Provider <select id="ai-provider" class="rounded-lg border p-2"><option value="openai">OpenAI</option><option value="gemini">Google Gemini</option><option value="claude">Anthropic Claude</option></select></label>
         <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_13rem]">
           <label class="block text-sm font-medium text-slate-700">API key
-            <input id="openai-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-…" class="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+            <input id="openai-key" type="password" autocomplete="off" spellcheck="false" placeholder="API key ของค่ายที่เลือก (ไม่ต้องใส่เครื่องหมายคำพูด)" class="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
           </label>
           <label class="block text-sm font-medium text-slate-700">โมเดล
-            <input id="summary-model" type="text" value="gpt-4o-mini" autocomplete="off" class="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+            <input id="summary-model" list="gemini-model-list" type="text" value="gpt-4o-mini" autocomplete="off" class="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
           </label>
         </div>
+        <datalist id="gemini-model-list"></datalist>
+        <button id="gemini-check" type="button" class="mt-3 hidden rounded-lg border border-indigo-200 bg-white px-4 py-2 text-sm text-indigo-700">ตรวจคีย์และโหลดโมเดล Gemini</button>
+        <p id="gemini-check-result" role="status" class="mt-2 text-sm text-slate-600"></p>
         <button id="summary-button" type="button" class="mt-3 inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-800 disabled:cursor-wait disabled:opacity-60">
           <svg id="summary-spinner" aria-hidden="true" class="spin hidden h-4 w-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".25" stroke-width="3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
           <span id="summary-button-label">สรุปงานวิจัย</span>
@@ -413,7 +416,35 @@
 
       const providerSelect = document.getElementById('ai-provider');
       const defaultModels = {openai: 'gpt-4o-mini', gemini: 'gemini-2.5-flash', claude: 'claude-sonnet-4-5'};
-      providerSelect.addEventListener('change', () => { document.getElementById('summary-model').value = defaultModels[providerSelect.value]; document.getElementById('openai-key').value = ''; });
+      providerSelect.addEventListener('change', () => {
+        document.getElementById('summary-model').value = defaultModels[providerSelect.value];
+        document.getElementById('openai-key').value = '';
+        document.getElementById('gemini-check').classList.toggle('hidden', providerSelect.value !== 'gemini');
+        document.getElementById('gemini-check-result').textContent = '';
+        document.getElementById('gemini-model-list').replaceChildren();
+      });
+      document.getElementById('gemini-check').classList.toggle('hidden', providerSelect.value !== 'gemini');
+      document.getElementById('gemini-check').onclick = async () => {
+        const button = document.getElementById('gemini-check');
+        const status = document.getElementById('gemini-check-result');
+        const key = document.getElementById('openai-key').value.trim();
+        if (!key) { status.textContent = 'กรุณากรอก Gemini API key ก่อน'; return; }
+        button.disabled = true; status.textContent = 'กำลังตรวจคีย์กับ Gemini…';
+        try {
+          const response = await fetch('/api/ai/gemini-models', {headers: {'X-AI-API-Key': key}, cache: 'no-store'});
+          const payload = await response.json();
+          if (!response.ok) throw new Error(typeof payload.detail === 'string' ? payload.detail : 'ตรวจคีย์ไม่สำเร็จ');
+          const list = document.getElementById('gemini-model-list'); list.replaceChildren();
+          for (const name of payload.models) { const option = document.createElement('option'); option.value = name; list.append(option); }
+          const model = document.getElementById('summary-model');
+          model.value = model.value.trim().replace(/^models\//, '');
+          status.textContent = payload.models.includes(model.value)
+            ? `คีย์เรียกดูรายการโมเดลได้ และพบ ${model.value} ที่รองรับ generateContent (ยังไม่ได้ตรวจโควตาการสร้างคำตอบ)`
+            : `คีย์เรียกดูรายการโมเดลได้ แต่ไม่พบชื่อที่กรอก${payload.truncated ? 'ในรายการที่โหลดมา' : ''} เลือกโมเดลจากช่องแนะนำด้านบน`;
+          if (!payload.models.length) status.textContent = 'คีย์เรียกดูรายการได้ แต่ไม่มีโมเดล generateContent ในรายการที่ได้รับ';
+        } catch (error) { status.textContent = error.message; }
+        finally { button.disabled = false; }
+      };
       document.getElementById('clear-key').onclick = () => { document.getElementById('openai-key').value = ''; };
       let aiBusy = false;
       async function callAI(feature, extra = {}) {

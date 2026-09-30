@@ -57,3 +57,11 @@ uvicorn main:app --reload
 ```
 
 Existing `/api/references` and `/api/doi` responses remain compatible; PDF result records additionally contain `citation_contexts`. The old summary input header is supported. AI features have their own router so the public lookup flow does not depend on an API key.
+
+## Gemini diagnostics
+
+`GET /api/ai/gemini-models` accepts `X-AI-API-Key` and lists models supporting `generateContent` using Gemini ListModels. The UI exposes this as **ตรวจคีย์และโหลดโมเดล Gemini**. It sends no paper and generates no content. Listing models does not guarantee generation quota, billing or model access.
+
+Model inputs accept both `gemini-2.5-flash` and `models/gemini-2.5-flash`; the prefix is normalized before constructing the API URL. Matching surrounding quotation marks are removed from pasted keys. No assumption is made about a key's prefix.
+
+Known upstream error reasons are translated into actionable messages (invalid/expired key, API restrictions, disabled service, missing billing). HTTP 400 is returned as 400, missing model as 422, permission errors as 401/403 and quota errors as 429. Unknown upstream service failures remain 502. Server logs contain only provider, upstream HTTP status and an allowlisted reason code, never keys or raw response bodies.

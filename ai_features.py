@@ -5,7 +5,7 @@ from typing import Literal
 from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
 from pydantic import BaseModel, Field, ValidationError, ConfigDict
 
-from ai_engine import generate, DEFAULT_MODELS
+from ai_engine import generate, DEFAULT_MODELS, normalize_credentials, gemini_models
 from extractor import (ExtractionError, Reference, extract_summary_text,
                        extract_bibliography_text, extract_citation_contexts, extract_citation_counts)
 from resolver import fetch_doi_summary_material, enrich_ai_references, resolve_references, validate_doi
@@ -88,6 +88,11 @@ async def source_material(file, doi):
 async def providers():
     return {'providers': DEFAULT_MODELS}
 
+@router.get('/api/ai/gemini-models')
+async def list_gemini_models(key: str | None = Header(None, alias='X-AI-API-Key')):
+    return await gemini_models(key)
+
+
 @router.post('/api/summarize')
 async def summarize(file: UploadFile | None = File(None), doi: str | None = Form(None),
                     provider: str = Form('openai'), model: str = Form(''),
@@ -95,8 +100,9 @@ async def summarize(file: UploadFile | None = File(None), doi: str | None = Form
                     old_key: str | None = Header(None, alias='X-OpenAI-API-Key')):
     if not (key or old_key):
         raise HTTPException(400, 'กรุณากรอก API key')
+    model, actual_key = normalize_credentials(provider, model, key or old_key)
     text, source, _ = await source_material(file, doi)
-    summary = await generate(provider, model, key or old_key,
+    summary = await generate(provider, model, actual_key,
         'สรุปเป้าหมาย วิธีการ ผลลัพธ์ ข้อจำกัด และสรุปสั้น ๆ หากมีเพียง metadata ให้บอกว่าไม่พอสรุปผลวิจัย\n' + text)
     return {'summary': summary, 'source': source, 'provider': provider, 'model': model or DEFAULT_MODELS[provider]}
 
@@ -107,6 +113,7 @@ async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'ex
                   key: str | None = Header(None, alias='X-AI-API-Key')):
     if not key or provider not in DEFAULT_MODELS:
         raise HTTPException(400, 'กรุณาเลือก provider และกรอก API key')
+    model, key = normalize_credentials(provider, model, key)
     if len(payload) > 550000:
         raise HTTPException(413, 'ข้อมูลรายการใหญ่เกินขีดจำกัด')
     try:
