@@ -89,10 +89,15 @@ def _first_author_family(citation: str) -> str:
     return tokens[-1].casefold() if tokens else ""
 
 
-def _crossref_year(item: dict) -> str | None:
+def _crossref_year(item: dict | None) -> str | None:
+    if not isinstance(item, dict):
+        return None
     for key in ("published-print", "published-online", "issued", "created"):
-        parts = (item.get(key) or {}).get("date-parts") or []
-        if parts and parts[0]:
+        date = item.get(key)
+        if not isinstance(date, dict):
+            continue
+        parts = date.get("date-parts") or []
+        if isinstance(parts, list) and parts and isinstance(parts[0], list) and parts[0]:
             return str(parts[0][0])
     return None
 
@@ -500,12 +505,25 @@ async def fetch_doi_summary_material(value: str) -> dict:
         except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
             pass
 
-    crossref_title = ((crossref or {}).get("title") or [""])[0]
+    # Missing records are normal (404, timeout or null API payload). Normalize
+    # before reading metadata so optional enrichment cannot crash AI features.
+    crossref = crossref if isinstance(crossref, dict) else {}
+    openalex = openalex if isinstance(openalex, dict) else {}
+    crossref_title = (crossref.get("title") or [""])[0]
     title = crossref_title or (openalex or {}).get("display_name") or ""
     author_names = [
         " ".join(part for part in (author.get("given"), author.get("family")) if part)
-        for author in (crossref or {}).get("author", [])[:12]
+        for author in (crossref.get("author") or [])[:12]
+        if isinstance(author, dict)
     ]
+    if not any(author_names):
+        author_names = [
+            author["display_name"]
+            for entry in (openalex.get("authorships") or [])
+            if isinstance(entry, dict)
+            for author in [entry.get("author")]
+            if isinstance(author, dict) and author.get("display_name")
+        ][:12]
     abstract = _crossref_abstract(crossref) or _openalex_abstract(openalex)
     return {
         "doi": doi,
