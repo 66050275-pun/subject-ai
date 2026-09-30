@@ -1596,3 +1596,14 @@ label:has(>#search-input)>svg {
 @keyframes drawer-out {to{transform:translateX(-100%)}}
 @media(max-width:480px){.settings-drawer{width:calc(100% - 20px)}.drawer-heading{padding:22px 18px}.drawer-scroll{padding:18px}.drawer-tabs button{font-size:10px}.settings-drawer .settings-content{padding:16px}}
 @media(prefers-reduced-motion:reduce){.settings-drawer[open],.settings-drawer.is-closing{animation:none}}
+
+.operation-progress {margin-top:16px;padding:12px 14px;background:#f0f5e9;border:1px solid #dbe7ce;border-radius:12px}
+.operation-caption {display:flex;align-items:flex-start;justify-content:space-between;gap:12px;font-size:11px;color:var(--ink);line-height:1.7}
+.operation-count {flex-shrink:0;color:var(--muted);font-size:10px;font-variant-numeric:tabular-nums}
+.operation-track {height:5px;overflow:hidden;border-radius:6px;background:#dce7d2;margin-top:9px}
+.operation-fill {height:100%;background:#517438;border-radius:6px;transition:width .25s ease}
+.operation-progress.is-indeterminate .operation-fill {width:30%;animation:operation-loading 1.5s ease-in-out infinite}
+.operation-progress.ai-progress {background:#f4f0fb;border-color:#e7dff5}.ai-progress .operation-track {background:#e6dcf4}.ai-progress .operation-fill {background:var(--violet)}
+@keyframes operation-loading {from{transform:translateX(-110%)}to{transform:translateX(440%)}}
+@media(max-width:480px){.operation-caption{flex-direction:column;gap:2px}}
+@media(prefers-reduced-motion:reduce){.operation-progress.is-indeterminate .operation-fill {animation:none;width:100%;opacity:.45}.operation-fill{transition:none}}

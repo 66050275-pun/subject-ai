@@ -22,7 +22,7 @@ class TransportTests(unittest.TestCase):
         expected = (root / 'static/index.html').read_text()
         for name in ('utilities.css', 'app.css'):
             expected = expected.replace('<link rel="stylesheet" href="/static/' + name + '">', '<style>' + (root / 'static' / name).read_text() + '</style>')
-        for name in ('settings.js', 'graph.js'):
+        for name in ('progress.js', 'settings.js', 'graph.js'):
             expected = expected.replace('<script src="/static/' + name + '"></script>', '<script>' + (root / 'static' / name).read_text() + '</script>')
         expected = expected.replace('class="brand" href="/"', 'class="brand" href="#paper-input"')
         import re

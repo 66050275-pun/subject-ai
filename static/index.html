@@ -36,9 +36,9 @@
             <div id="dropzone" role="button" tabindex="0" aria-describedby="upload-hint"><span class="upload-icon">↑</span><h3>วางเปเปอร์ของคุณตรงนี้</h3><p>ลาก PDF มาวาง หรือ <b>เลือกจากอุปกรณ์</b></p><span id="upload-hint">รองรับ PDF ที่มีข้อความ · สูงสุด 50 MB</span></div>
             <div id="file-row" class="file-row hidden"><span id="file-name"></span><button id="remove-file" type="button">เปลี่ยนไฟล์ →</button></div>
             <div class="extraction-methods"><div class="method-card"><span class="method-label">⌘ CODE EXTRACTION</span><h4>สกัดด้วยโค้ด</h4><p>อ่านบรรณานุกรมอัตโนมัติ<br>เริ่มได้ทันที ไม่ใช้ AI key</p><button id="analyze-button" type="button" disabled class="primary-button"><span id="button-spinner" class="spin hidden" aria-hidden="true">◌</span><span id="button-label">สกัดด้วยโค้ด →</span></button></div><div class="method-card ai-method"><span class="method-label">✦ AI EXTRACTION</span><h4>สกัดด้วย AI</h4><p>ตัวเลือกสำหรับรูปแบบซับซ้อน<br>ใช้ API key และแสดงผลแยกชุด<br>ไฟล์ยาวจะแบ่งเป็นหลายคำขอ</p><button data-ai="extract-references" type="button" class="violet-button">สกัดด้วย AI →</button><a href="#ai-settings" class="method-settings">ตั้งค่า API key ⚙</a></div></div>
-            <div id="loading-track" class="loading-track hidden"><div class="indeterminate"></div></div><div id="extraction-output" role="status" class="output-block"></div>
+            <div id="code-progress" class="operation-progress hidden"></div><div id="extraction-progress" class="operation-progress ai-progress hidden"></div><div id="extraction-output" role="status" class="output-block"></div>
           </div>
-          <div class="panel doi-panel"><div class="panel-heading"><span class="icon-tile violet">→</span><div><h3>มี DOI อยู่แล้ว?</h3><p>ตามหาเครือข่ายของเปเปอร์ได้เลย</p></div></div><div class="doi-symbol" aria-hidden="true">doi<span>→</span></div><label for="doi-input">DOI หรือ DOI URL</label><input id="doi-input" type="text" inputmode="url" placeholder="10.xxxx/… หรือ https://doi.org/…"><button id="doi-button" class="dark-button" type="button">ค้นหาด้วย DOI →</button><div class="doi-caption"><span>→</span><p>ดูงานที่เปเปอร์นี้อ้างถึง และงานที่อ้างถึงเปเปอร์นี้ จากฐานข้อมูลวิชาการเปิด</p></div></div>
+          <div class="panel doi-panel"><div class="panel-heading"><span class="icon-tile violet">→</span><div><h3>มี DOI อยู่แล้ว?</h3><p>ตามหาเครือข่ายของเปเปอร์ได้เลย</p></div></div><div class="doi-symbol" aria-hidden="true">doi<span>→</span></div><label for="doi-input">DOI หรือ DOI URL</label><input id="doi-input" type="text" inputmode="url" placeholder="10.xxxx/… หรือ https://doi.org/…"><button id="doi-button" class="dark-button" type="button">ค้นหาด้วย DOI →</button><div id="doi-progress" class="operation-progress hidden"></div><div class="doi-caption"><span>→</span><p>ดูงานที่เปเปอร์นี้อ้างถึง และงานที่อ้างถึงเปเปอร์นี้ จากฐานข้อมูลวิชาการเปิด</p></div></div>
         </div><div id="alert" role="alert" class="hidden"></div>
       </section>
     <section id="results-section" class="workspace-section hidden" aria-label="ผลการค้นหา">
@@ -62,6 +62,7 @@
           <div><button id="oa-search-button" type="button">ค้น PDF เพิ่มทุกแหล่ง →</button>
             <button id="export-pdf-links" type="button">↓ ส่งออกลิงก์ PDF</button></div>
         </div>
+        <div id="oa-progress" class="operation-progress hidden"></div>
         <p id="oa-status" role="status" aria-live="polite">พบลิงก์จากฐานข้อมูลไม่ได้รับรองว่าดาวน์โหลดได้จริงทุกลิงก์ · มีป้ายแยกฉบับผู้เขียนและ preprint</p>
       </section>
       <div class="flex flex-col justify-between gap-5 border-b border-slate-200 pb-6 sm:flex-row sm:items-end">
@@ -160,6 +161,7 @@
       <section id="ai-workspace" class="workspace-section ai-workspace">
         <div class="section-heading"><div><div class="section-kicker">03 / AI RESEARCH LAB</div><h2>เปลี่ยนข้อมูล ให้เป็นไอเดีย <span class="sparkle">✦</span></h2></div><a href="#ai-settings" class="pill-link">ใช้ AI ของคุณเอง →</a></div>
 
+        <div id="ai-progress" class="operation-progress ai-progress hidden"></div>
         <p id="selection-count" class="selection-banner">เลือกเปเปอร์บนการ์ดรายการอ้างอิง 0/5 รายการ</p>
         <div id="ai-tools" class="tool-grid">
           <button id="summary-button" type="button" class="tool-card"><span class="tool-icon">≋</span><span><b id="summary-button-label">สรุปงานวิจัย</b><small>เป้าหมาย วิธีการ ผลลัพธ์ และข้อจำกัด</small></span><span id="summary-spinner" class="spin hidden">◌</span><span class="tool-arrow">→</span></button>
@@ -208,11 +210,14 @@
       <section id="settings-privacy" class="drawer-section hidden"><div class="drawer-intro"><h3>ข้อมูลไปที่ไหนบ้าง?</h3><p>เลือกใช้แต่ละฟีเจอร์ได้ โดยไม่ต้องเปิดการจำค่าตั้งต้น</p></div><div class="privacy-card"><h4>PDF และการค้นหา</h4><p>PDF ผ่านเซิร์ฟเวอร์เพื่อสกัดข้อความ การค้นอ้างอิงส่ง DOI ชื่อเรื่อง หรือ metadata ไปยังฐานข้อมูลวิชาการที่ใช้ ฟีเจอร์ AI ส่งบริบทที่จำเป็นและคีย์ผ่านเซิร์ฟเวอร์ไปยัง provider ที่เลือก</p></div><div class="privacy-card"><h4>API key และผลการทำงาน</h4><p>แอปไม่บันทึกคีย์ PDF หรือแช็ตลง storage ของเบราว์เซอร์หรือไฟล์ถาวรของแอป ข้อมูลคำขออยู่ในหน่วยความจำระหว่างประมวลผล นโยบายเก็บข้อมูลของผู้ให้บริการ AI และผู้ให้บริการโฮสต์อาจแตกต่างกัน</p></div><div class="privacy-card"><h4>คุกกี้และบริการภายนอก</h4><p>แอปไม่ตั้งคุกกี้โฆษณาหรือติดตาม Streamlit อาจใช้คุกกี้ที่จำเป็นสำหรับความปลอดภัยและการเชื่อมต่อ ฟอนต์โหลดจาก Google Fonts และลิงก์บทความเปิดเว็บไซต์ภายนอกซึ่งมีนโยบายของตนเอง</p><p>การจำ provider/โมเดลเป็นตัวเลือกที่ปิดไว้ก่อน และถอนโดยปิดสวิตช์ในหมวดเชื่อมต่อ AI ได้ทุกเมื่อ</p></div><div class="privacy-card"><h4>ก่อนส่งข้อมูล</h4><p>เลือก provider ที่คุณยอมรับนโยบายข้อมูล และหลีกเลี่ยงการส่งเอกสารที่มีข้อมูลส่วนบุคคลหรือข้อมูลที่คุณไม่มีสิทธิ์แชร์</p></div></section>
     </div><div class="drawer-foot"><span class="status-dot"></span> Your keys. Your choices.</div>
   </dialog>
+  <script src="/static/progress.js"></script>
   <script src="/static/settings.js"></script>
   <script src="/static/graph.js"></script>
   <script>
     (() => {
 
+      const progress = window.PaperRefProgress;
+      let codeBusy = false, doiBusy = false;
       const MAX_BYTES = 50 * 1024 * 1024;
       const fileInput = document.getElementById('file-input');
       const dropzone = document.getElementById('dropzone');
@@ -293,7 +298,8 @@
       function setBusy(busy) {
         analyzeButton.disabled = busy || !selectedFile;
         document.getElementById('button-spinner').classList.toggle('hidden', !busy);
-        document.getElementById('loading-track').classList.toggle('hidden', !busy);
+        codeBusy = busy;
+        if (busy) progress.start('code-progress', 'กำลังอ่าน PDF สกัดบรรณานุกรม และค้นหา DOI/ลิงก์…'); else progress.finish('code-progress');
         document.getElementById('button-label').textContent = busy ? 'กำลังสกัด…' : 'สกัดด้วยโค้ด →';
       }
       const selectedPapers = new Set();
@@ -422,7 +428,7 @@
       dropzone.addEventListener('drop', (event) => chooseFile(event.dataTransfer.files[0]));
 
       analyzeButton.addEventListener('click', async () => {
-        if (!selectedFile) return;
+        if (!selectedFile || codeBusy) return;
         hideAlert(); setBusy(true);
         const inputFile = selectedFile; const requestVersion = sourceVersion;
         const form = new FormData(); form.append('file', inputFile);
@@ -439,12 +445,14 @@
       });
 
       document.getElementById('doi-button').addEventListener('click', async () => {
+        if (doiBusy) return;
         const doi = document.getElementById('doi-input').value.trim();
         if (!doi) { showAlert('กรุณากรอก DOI ก่อนค้นหา'); return; }
         hideAlert();
         const button = document.getElementById('doi-button');
         const requestVersion = sourceVersion;
-        button.disabled = true; button.textContent = 'กำลังค้นหา DOI...';
+        doiBusy = true; button.disabled = true; button.textContent = 'กำลังค้นหา DOI...';
+        progress.start('doi-progress', 'กำลังค้นหางานต้นทาง รายการอ้างอิง และงานที่อ้างถึง DOI นี้…');
         try {
           const form = new FormData(); form.append('doi', doi);
           const response = await fetch('/api/doi', { method: 'POST', body: form });
@@ -457,6 +465,7 @@
         } catch (error) {
           showAlert(error.message || 'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองอีกครั้ง');
         } finally {
+          doiBusy = false; progress.finish('doi-progress');
           button.disabled = false; button.textContent = 'ค้นหาด้วย DOI →';
         }
       });
@@ -551,6 +560,9 @@
         form.append('model', document.getElementById('summary-model').value.trim());
         form.append('payload', JSON.stringify({papers: feature === 'extract-references' ? [] : papers.map(p => ({id: p.reference_number, title: String(p.matched_title || p.title || p.original_text || '').slice(0, 1200), doi: p.doi || null, year: p.year ? String(p.year) : null, original_text: String(p.original_text || '').slice(0, 4000)})), ...extra}));
         aiBusy = true; updateDatasetTabs();
+        const progressId = feature === 'extract-references' ? 'extraction-progress' : 'ai-progress';
+        const progressLabels = {summary:'กำลังสกัดบริบทและสรุปงานวิจัย…', intents:'กำลังวิเคราะห์บริบท citation…', synthesis:'กำลังสังเคราะห์วรรณกรรม…', clusters:'กำลังจัดกลุ่มธีมบนกราฟ…', qa:'กำลังอ่านบริบทและสร้างคำตอบ…', 'extract-references':'กำลังเตรียม PDF และสกัดบรรณานุกรมด้วย AI…'};
+        progress.start(progressId, progressLabels[feature] || 'กำลังประมวลผลด้วย AI…');
         document.querySelectorAll('[data-ai], #summary-button, #qa-form button').forEach(b => b.disabled = true);
         try {
           const response = await fetch(feature === 'summary' ? '/api/summarize' : '/api/ai/' + feature, {method: 'POST', body: form, headers: {'X-AI-API-Key': key}});
@@ -560,6 +572,7 @@
           if (requestVersion !== sourceVersion || requestDataset !== activeDataset) throw new Error('งานต้นทางหรือชุดผลลัพธ์เปลี่ยนแล้ว กรุณาเรียกเครื่องมือกับชุดปัจจุบัน');
           return payload;
         } finally {
+          progress.finish(progressId);
           aiBusy = false; updateDatasetTabs();
           document.querySelectorAll('[data-ai], #summary-button, #qa-form button').forEach(b => b.disabled = false);
         }
@@ -575,6 +588,7 @@
           if (event.type === 'error') throw new Error(event.detail);
           if (event.type === 'result') result = event.payload;
           if (event.type === 'progress') {
+            progress.update('extraction-progress', event.stage === 'resolving' ? 'สกัดบรรณานุกรมแล้ว กำลังค้นหา DOI และลิงก์…' : 'กำลังสกัดบรรณานุกรมทีละส่วน…', event.stage === 'resolving' ? null : event.completed, event.total);
             output.textContent = event.stage === 'resolving'
               ? `สกัดครบ ${event.total} ส่วนแล้ว กำลังค้นหา DOI และลิงก์สำหรับรายการทั้งหมด…`
               : `สกัดด้วย AI แล้ว ${event.completed}/${event.total} ส่วน · ไฟล์ใหญ่จะใช้หลายคำขอและคิดค่า API ตามการใช้งาน`;
@@ -669,6 +683,7 @@
         const controller = new AbortController(); oaController = controller;
         const button = document.getElementById('oa-search-button'); button.disabled = true;
         const output = document.getElementById('oa-status'); output.textContent = 'กำลังค้นหา PDF ฉบับสำรอง…';
+        progress.start('oa-progress', 'กำลังค้นหา PDF จากฐานข้อมูลเปิด…');
         let reader;
         try {
           const papers = record.payload.results.map(p => ({reference_number: p.reference_number,
@@ -682,6 +697,7 @@
             if (!line.trim() || version !== sourceVersion || datasets.get(kind) !== record) return;
             const event = JSON.parse(line);
             if (event.type === 'error') throw new Error(event.detail);
+            if (event.type === 'progress' || event.type === 'item') progress.update('oa-progress', 'กำลังค้นหา PDF จากฐานข้อมูลเปิด…', event.completed, event.total);
             if (event.type === 'item') {
               const item = record.payload.results.find(p => p.reference_number === event.result.reference_number);
               if (item) {
@@ -718,7 +734,7 @@
           }
           consume(pending); if (!doneEvent && version === sourceVersion) throw new Error('การเชื่อมต่อจบก่อนค้นครบ ผลที่ค้นพบแล้วและชุดเดิมยังอยู่');
         } catch (error) { if (error.name !== 'AbortError' && version === sourceVersion && activeDataset === kind) output.textContent = error.message; }
-        finally { await reader?.cancel().catch(() => {}); if (oaController === controller) oaController = null; button.disabled = false; }
+        finally { progress.finish('oa-progress'); await reader?.cancel().catch(() => {}); if (oaController === controller) oaController = null; button.disabled = false; }
       };
       function accessBadgeStyle(status) {
         if (status === 'pdf_available') return 'bg-emerald-100 text-emerald-800';
