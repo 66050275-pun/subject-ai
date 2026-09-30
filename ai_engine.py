@@ -116,6 +116,8 @@ def raise_provider_error(response, provider):
         raise HTTPException(422, 'MaxPlus AI: ไม่พบ endpoint หรือโมเดล ตรวจ Base URL และชื่อโมเดลที่ผู้ให้บริการรองรับ')
     if response.status_code == 404:
         raise HTTPException(422, prefix + ': ไม่พบโมเดลใน API นี้ หากใช้ Gemini ให้กดตรวจคีย์และโหลดรายการโมเดล')
+    if response.status_code == 504:
+        raise HTTPException(504, prefix + ': ผู้ให้บริการหมดเวลาประมวลผล (HTTP 504) ลองใช้โมเดลอื่นหรือเรียกอีกครั้งภายหลัง')
     if response.status_code == 429:
         raise HTTPException(429, prefix + ': โควตาเต็มหรือวงเงินไม่เพียงพอ ตรวจ quota และ billing ของ project')
     if response.status_code == 400:
@@ -157,7 +159,7 @@ async def gemini_models(key):
     return {'models': sorted(set(models)), 'truncated': bool(token)}
 
 
-async def generate(provider, model, key, prompt, *, structured=False, max_output_tokens=6000, base_url=None):
+async def generate(provider, model, key, prompt, *, structured=False, max_output_tokens=6000, base_url=None, timeout_seconds=90):
     model, key = normalize_credentials(provider, model, key)
     if provider == 'maxplus':
         base_url = normalize_maxplus_url(base_url)
@@ -187,10 +189,11 @@ async def generate(provider, model, key, prompt, *, structured=False, max_output
         body = {'model': model, 'max_tokens': max_output_tokens, 'system': system,
                 'messages': [{'role': 'user', 'content': prompt}]}
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(90, connect=10), follow_redirects=False) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_seconds, connect=10), follow_redirects=False) as client:
             response = await client.post(url, headers=headers, json=body)
     except httpx.TimeoutException:
-        raise HTTPException(504, 'AI ใช้เวลาตอบนานเกินไป') from None
+        logger.warning('AI provider=%s timeout_origin=application read_timeout_seconds=%s', provider, timeout_seconds)
+        raise HTTPException(504, f'แอปรอคำตอบ AI เกิน {timeout_seconds} วินาที ลองใช้โมเดลที่ตอบเร็วขึ้นหรือแบ่งบรรณานุกรมให้สั้นลง') from None
     except httpx.HTTPError:
         raise HTTPException(502, 'เชื่อมต่อ AI provider ไม่สำเร็จ') from None
     raise_provider_error(response, provider)

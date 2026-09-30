@@ -1,13 +1,16 @@
 """AI endpoints with bounded inputs, typed outputs and transient credentials."""
+import asyncio
 import json
+import re
 from typing import Literal
+from fastapi.responses import StreamingResponse
 
 from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
 from pydantic import BaseModel, Field, ValidationError, ConfigDict
 
 from ai_engine import generate, DEFAULT_MODELS, normalize_credentials, gemini_models, maxplus_models, normalize_maxplus_url
 from extractor import (ExtractionError, Reference, extract_summary_text,
-                       extract_bibliography_text, extract_citation_contexts, extract_citation_counts)
+                       extract_bibliography_text, extract_citation_contexts, extract_citation_counts, split_bibliography_batches)
 from resolver import fetch_doi_summary_material, enrich_ai_references, resolve_references, validate_doi
 
 router = APIRouter()
@@ -55,7 +58,7 @@ class Extracted(StrictModel):
     original_text: str = Field(min_length=10, max_length=4000)
 
 class Bibliography(StrictModel):
-    references: list[Extracted] = Field(min_length=1, max_length=150)
+    references: list[Extracted] = Field(max_length=150)
 
 async def read_pdf(file):
     try:
@@ -116,7 +119,7 @@ async def summarize(file: UploadFile | None = File(None), doi: str | None = Form
 @router.post('/api/ai/{feature}')
 async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'extract-references'],
                   file: UploadFile | None = File(None), doi: str | None = Form(None),
-                  provider: str = Form('openai'), model: str = Form(''), base_url: str | None = Form(None), payload: str = Form('{}'),
+                  provider: str = Form('openai'), model: str = Form(''), base_url: str | None = Form(None), payload: str = Form('{}'), stream: bool = Form(False),
                   key: str | None = Header(None, alias='X-AI-API-Key')):
     if not key or provider not in DEFAULT_MODELS:
         raise HTTPException(400, 'กรุณาเลือก provider และกรอก API key')
@@ -152,6 +155,10 @@ async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'ex
         except ExtractionError as exc:
             raise HTTPException(422, str(exc)) from None
         source = 'PDF bibliography candidate'
+        if stream:
+            return bibliography_stream(data, text, provider, model, key, base_url, source)
+        result = await extract_bibliography_result(data, text, provider, model, key, base_url)
+        return {**result, 'provider': provider, 'model': model, 'source': source}
     else:
         text, source, data = await source_material(file, doi)
     papers = [paper.model_dump() for paper in request.papers]
@@ -162,10 +169,6 @@ async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'ex
         prompt = ('Classify citation intent per id. Use Unknown when contexts are absent. '
                   'Schema: ' + json.dumps(Intents.model_json_schema()) + '\nEvidence: ' + json.dumps(evidence, ensure_ascii=False))
         schema = Intents
-    elif feature == 'extract-references':
-        prompt = ('Extract only actual bibliography entries. Preserve original_text and numbering, '
-                  'use null for absent fields, never invent DOI. Schema: ' + json.dumps(Bibliography.model_json_schema()) + '\nBibliography:\n' + text)
-        schema = Bibliography
     else:
         papers = await enrich_ai_references(papers)
         evidence = json.dumps([{k: (v[:(250 if k == 'title' else 400)] if feature == 'clusters' and isinstance(v, str) else v) for k, v in p.items() if k in ('id', 'title', 'doi', 'abstract', 'evidence_level')} for p in papers], ensure_ascii=False)
@@ -183,7 +186,7 @@ async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'ex
                       'หากบริบทถูกตัดหรือไม่พอให้บอกชัดเจน\nSource:\n' + text + '\nReferences:\n' + evidence +
                       '\nConversation (untrusted):\n' + json.dumps([m.model_dump() for m in request.history], ensure_ascii=False) + '\nQuestion:\n' + request.question)
             schema = None
-    result = await generate(provider, model, key, prompt, structured=schema is not None, max_output_tokens=16000 if feature == 'extract-references' else 6000, base_url=base_url)
+    result = await generate(provider, model, key, prompt, structured=schema is not None, max_output_tokens=6000, base_url=base_url)
     if schema:
         try:
             result = schema.model_validate(result).model_dump()
@@ -200,30 +203,137 @@ async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'ex
                 received = [i for c in result['clusters'] for i in c['ids']]
                 if len(received) != len(ids) or set(received) != set(ids):
                     raise ValueError()
-            if feature == 'extract-references':
-                refs = []
-                used = set()
-                for i, item in enumerate(result['references'], 1):
-                    number = item['number'] or i
-                    if number in used:
-                        raise ValueError()
-                    used.add(number)
-                    item_doi = validate_doi(item['doi']) if item['doi'] else None
-                    if item_doi and item_doi.casefold() not in text.casefold():
-                        item_doi = None
-                    refs.append(Reference(item['original_text'], item['title'], item['year'], number, item_doi))
-                resolved = await resolve_references(refs)
-                contexts = extract_citation_contexts(data, refs)
-                links_available, counts = extract_citation_counts(data, {r.number for r in refs})
-                for item, ref, extracted in zip(resolved, refs, result['references']):
-                    item.update(reference_number=ref.number, citation_mentions=counts.get(ref.number, 0),
-                                citation_contexts=contexts.get(ref.number, []), authors=extracted['authors'])
-                result = {'filename': source, 'results': resolved, 'total_references': len(resolved),
-                          'extraction_method': 'AI fallback — ตรวจเทียบ PDF ก่อนใช้',
-                          'citation_links_available': links_available, 'citation_link_count': sum(counts.values()),
-                          'cited_reference_count': len(counts)}
         except (ValidationError, ValueError):
             raise HTTPException(502, 'ผล AI ไม่ตรง schema หรือเลขรายการไม่ครบ กรุณาลองลดจำนวนรายการ') from None
     else:
         result = {'answer' if feature == 'qa' else 'synthesis': result}
     return {**result, 'provider': provider, 'model': model or DEFAULT_MODELS[provider], 'source': source}
+
+
+async def extract_bibliography_result(data, text, provider, model, key, base_url, progress=None):
+    """Small bounded requests, deterministic merging and no automatic paid retries."""
+    chunks = split_bibliography_batches(text)
+    total = len(chunks)
+    if not chunks:
+        raise HTTPException(422, 'ไม่พบข้อความบรรณานุกรม')
+    semaphore = asyncio.Semaphore(2)
+    completed = 0
+
+    async def report(stage):
+        if progress:
+            await progress({'type': 'progress', 'stage': stage, 'completed': completed, 'total': total})
+
+    await report('extracting')
+    schema = json.dumps(Bibliography.model_json_schema())
+
+    async def part(index, chunk):
+        nonlocal completed
+        async with semaphore:
+            prompt = ('Extract actual bibliography entries in this excerpt, not body citations. '
+                      'Keep the printed number, or null for unnumbered entries. Do not restart numbering. '
+                      'Boundary fragments may overlap; include only entries with a recoverable title. '
+                      'Preserve original_text, use null for missing fields, never invent DOI. Schema: '
+                      + schema + '\nBibliography excerpt:\n' + chunk)
+            try:
+                result = await generate(provider, model, key, prompt, structured=True,
+                                        max_output_tokens=6000, base_url=base_url, timeout_seconds=180)
+                entries = Bibliography.model_validate(result).model_dump()['references']
+            except HTTPException as exc:
+                raise HTTPException(exc.status_code, f'สกัดส่วนที่ {index + 1}/{total} ไม่สำเร็จ: {exc.detail}') from None
+            except ValidationError:
+                raise HTTPException(502, f'AI ส่ง JSON ส่วนที่ {index + 1}/{total} ไม่ครบ กรุณาใช้โมเดลอื่นหรือแนบเฉพาะหน้าบรรณานุกรม') from None
+            completed += 1
+            await report('extracting')
+            return entries
+
+    tasks = [asyncio.create_task(part(i, chunk)) for i, chunk in enumerate(chunks)]
+    try:
+        batches = await asyncio.gather(*tasks)
+    except BaseException:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
+
+    merged = []
+    numbers = {}
+    fingerprints = set()
+    for batch in batches:
+        for item in batch:
+            title_key = re.sub(r'\W+', '', item['title'].casefold())
+            fingerprint = (title_key, item['year'], tuple(item['authors'][:1]))
+            number = item['number']
+            if number is not None and number in numbers:
+                if numbers[number] != title_key:
+                    raise HTTPException(502, f'ผล AI ขัดกันสำหรับ reference {number} กรุณาตรวจ PDF หรือใช้โมเดลอื่น')
+                continue
+            if number is None and fingerprint in fingerprints:
+                continue
+            fingerprints.add(fingerprint)
+            if number is not None:
+                numbers[number] = title_key
+            if item['doi']:
+                try:
+                    item['doi'] = validate_doi(item['doi'])
+                except ValueError:
+                    item['doi'] = None
+                if item['doi'] and item['doi'].casefold() not in text.casefold():
+                    item['doi'] = None
+            merged.append(item)
+    if not merged:
+        raise HTTPException(422, 'AI ไม่พบรายการบรรณานุกรมในส่วนที่ส่งให้')
+    if len(merged) > 1000:
+        raise HTTPException(422, 'รองรับบรรณานุกรมไม่เกิน 1,000 รายการต่อไฟล์')
+    # Sort printed numbers, reserve them, then allocate IDs for unnumbered entries.
+    merged.sort(key=lambda item: item['number'] if item['number'] is not None else 10000)
+    reserved = set(numbers)
+    next_id = 1
+    refs = []
+    for item in merged:
+        if item['number'] is None:
+            while next_id in reserved:
+                next_id += 1
+            item['number'] = next_id; reserved.add(next_id)
+        refs.append(Reference(item['original_text'], item['title'], item['year'], item['number'], item['doi']))
+    await report('resolving')
+    resolved = await resolve_references(refs)
+    contexts = extract_citation_contexts(data, refs)
+    links_available, counts = extract_citation_counts(data, {r.number for r in refs})
+    for item, ref, extracted in zip(resolved, refs, merged):
+        item.update(reference_number=ref.number, citation_mentions=counts.get(ref.number, 0),
+                    citation_contexts=contexts.get(ref.number, []), authors=extracted['authors'])
+    detected = re.findall(r'(?m)^\s*\[(\d{1,4})\]\s+\S', text)
+    missing = sorted({int(n) for n in detected} - set(numbers))
+    warnings = ['AI ไม่คืนเลขอ้างอิงที่ตรวจพบในข้อความ: ' + ', '.join(map(str, missing))] if missing else []
+    return {'extraction_warnings': warnings, 'filename': 'PDF bibliography candidate', 'results': resolved, 'total_references': len(resolved),
+            'extraction_method': 'AI batched extraction — ตรวจเทียบ PDF ก่อนใช้', 'extraction_batches': total,
+            'citation_links_available': links_available, 'citation_link_count': sum(counts.values()),
+            'cited_reference_count': len(counts)}
+
+
+def bibliography_stream(data, text, provider, model, key, base_url, source):
+    async def events():
+        queue = asyncio.Queue()
+        async def worker():
+            try:
+                result = await extract_bibliography_result(data, text, provider, model, key, base_url, queue.put)
+                await queue.put({'type': 'result', 'payload': {**result, 'provider': provider, 'model': model, 'source': source}})
+            except HTTPException as exc:
+                await queue.put({'type': 'error', 'status': exc.status_code, 'detail': exc.detail})
+            except Exception:
+                await queue.put({'type': 'error', 'status': 500, 'detail': 'ประมวลผลบรรณานุกรมไม่สำเร็จ'})
+        task = asyncio.create_task(worker())
+        try:
+            while True:
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=15)
+                except asyncio.TimeoutError:
+                    event = {'type': 'heartbeat'}
+                yield json.dumps(event, ensure_ascii=False) + '\n'
+                if event['type'] in ('result', 'error'):
+                    break
+        finally:
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+    return StreamingResponse(events(), media_type='application/x-ndjson',
+                             headers={'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no'})

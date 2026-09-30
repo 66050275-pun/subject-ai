@@ -35,7 +35,7 @@
             <input id="file-input" type="file" accept=".pdf,application/pdf" class="sr-only">
             <div id="dropzone" role="button" tabindex="0" aria-describedby="upload-hint"><span class="upload-icon">↑</span><h3>วางเปเปอร์ของคุณตรงนี้</h3><p>ลาก PDF มาวาง หรือ <b>เลือกจากอุปกรณ์</b></p><span id="upload-hint">รองรับ PDF ที่มีข้อความ · สูงสุด 50 MB</span></div>
             <div id="file-row" class="file-row hidden"><span id="file-name"></span><button id="remove-file" type="button">เปลี่ยนไฟล์ →</button></div>
-            <div class="extraction-methods"><div class="method-card"><span class="method-label">⌘ CODE EXTRACTION</span><h4>สกัดด้วยโค้ด</h4><p>อ่านบรรณานุกรมอัตโนมัติ<br>เริ่มได้ทันที ไม่ใช้ AI key</p><button id="analyze-button" type="button" disabled class="primary-button"><span id="button-spinner" class="spin hidden" aria-hidden="true">◌</span><span id="button-label">สกัดด้วยโค้ด →</span></button></div><div class="method-card ai-method"><span class="method-label">✦ AI EXTRACTION</span><h4>สกัดด้วย AI</h4><p>ตัวเลือกสำหรับรูปแบบซับซ้อน<br>ใช้ API key และแสดงผลแยกชุด</p><button data-ai="extract-references" type="button" class="violet-button">สกัดด้วย AI →</button><a href="#ai-settings" class="method-settings">ตั้งค่า API key ↓</a></div></div>
+            <div class="extraction-methods"><div class="method-card"><span class="method-label">⌘ CODE EXTRACTION</span><h4>สกัดด้วยโค้ด</h4><p>อ่านบรรณานุกรมอัตโนมัติ<br>เริ่มได้ทันที ไม่ใช้ AI key</p><button id="analyze-button" type="button" disabled class="primary-button"><span id="button-spinner" class="spin hidden" aria-hidden="true">◌</span><span id="button-label">สกัดด้วยโค้ด →</span></button></div><div class="method-card ai-method"><span class="method-label">✦ AI EXTRACTION</span><h4>สกัดด้วย AI</h4><p>ตัวเลือกสำหรับรูปแบบซับซ้อน<br>ใช้ API key และแสดงผลแยกชุด<br>ไฟล์ยาวจะแบ่งเป็นหลายคำขอ</p><button data-ai="extract-references" type="button" class="violet-button">สกัดด้วย AI →</button><a href="#ai-settings" class="method-settings">ตั้งค่า API key ↓</a></div></div>
             <div id="loading-track" class="loading-track hidden"><div class="indeterminate"></div></div><div id="extraction-output" role="status" class="output-block"></div>
           </div>
           <div class="panel doi-panel"><div class="panel-heading"><span class="icon-tile violet">→</span><div><h3>มี DOI อยู่แล้ว?</h3><p>ตามหาเครือข่ายของเปเปอร์ได้เลย</p></div></div><div class="doi-symbol" aria-hidden="true">doi<span>→</span></div><label for="doi-input">DOI หรือ DOI URL</label><input id="doi-input" type="text" inputmode="url" placeholder="10.xxxx/… หรือ https://doi.org/…"><button id="doi-button" class="dark-button" type="button">ค้นหาด้วย DOI →</button><div class="doi-caption"><span>→</span><p>ดูงานที่เปเปอร์นี้อ้างถึง และงานที่อ้างถึงเปเปอร์นี้ จากฐานข้อมูลวิชาการเปิด</p></div></div>
@@ -105,9 +105,9 @@
           </div>
         </div>
         <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
-          <p class="text-xs text-slate-500">ลากจุดเพื่อจัดวาง · ลากพื้นหลังเพื่อเลื่อน · เลื่อนเมาส์เพื่อซูม</p>
+          <p class="text-xs text-slate-500">ลากการ์ดหรือกลุ่ม · ลากพื้นหลังเพื่อเลื่อน · คลิกเปเปอร์เพื่อดูรายละเอียด</p>
           <div class="flex gap-2">
-            <button id="graph-zoom-out" type="button" aria-label="ย่อกราฟ" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">−</button>
+            <span id="graph-zoom-label" class="small-label">100%</span><button id="graph-fit" type="button" class="graph-control">ดูทั้งกราฟ</button><button id="graph-zoom-out" type="button" aria-label="ย่อกราฟ" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">−</button>
             <button id="graph-zoom-in" type="button" aria-label="ขยายกราฟ" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">+</button>
             <button id="graph-reset" type="button" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">จัดวางใหม่</button>
           </div>
@@ -115,7 +115,7 @@
         <div class="mt-3 overflow-x-auto">
           <svg id="citation-graph" class="mx-auto block w-full min-w-[680px] max-w-5xl touch-none select-none" viewBox="0 0 1240 900" role="group" aria-label="กราฟอ้างอิงแบบลากและซูมได้"></svg>
         </div>
-        <p id="network-detail" class="text-center text-xs text-slate-500"></p>
+        <div id="graph-inspector" class="graph-inspector hidden"><div><h4 id="graph-paper-title"></h4><p id="graph-paper-meta"></p></div><div class="graph-inspector-actions"><button id="graph-open-paper" type="button">ดูการ์ดรายการ →</button><button id="graph-select-paper" type="button">+ เลือกเพื่อสังเคราะห์</button></div></div><p id="network-detail" class="text-center text-xs text-slate-500"></p>
       </section></details>
 
       <div class="mt-8">
@@ -181,6 +181,7 @@
       <footer><span>PaperRef Finder <b>→</b></span><p>Made for curious minds. · ตรวจสอบผลกับงานวิจัยต้นฉบับก่อนใช้อ้างอิง</p></footer>
     </main>
   </div>
+  <script src="/static/graph.js"></script>
   <script>
     (() => {
       for (const link of document.querySelectorAll('a[href="#ai-settings"]')) link.addEventListener('click', () => { document.getElementById('ai-settings').open = true; });
@@ -204,9 +205,6 @@
       let citedReferenceCount = 0;
       let currentView = 'references';
       let currentAccessFilter = 'all';
-      let graphZoom = 1;
-      let graphOffsetX = 0;
-      let graphOffsetY = 0;
 
       function showAlert(message, kind = 'error') {
         alertBox.textContent = message;
@@ -329,6 +327,7 @@
         document.getElementById('dataset-note').textContent = kind === 'ai' ? 'ชุดนี้สกัดบรรณานุกรมด้วย AI · ผลจากโค้ดยังอยู่ในแท็บของตัวเอง · ตรวจเทียบกับ PDF ก่อนใช้' : kind === 'code' ? 'ชุดนี้สกัดบรรณานุกรมด้วยโค้ด · ไม่ใช้ AI key · สลับไปดูผล AI ได้เมื่อสกัดอีกวิธีแล้ว' : 'ชุดนี้มาจากฐานข้อมูลวิชาการของ DOI · จำนวนรายการอาจขึ้นกับข้อมูลที่ฐานข้อมูลเปิดเผย';
         allCitingResults = payload.citing_papers || [];
         sourceName = payload.filename || 'references';
+        if (payload.extraction_warnings?.length) document.getElementById('dataset-note').textContent += ' · ' + payload.extraction_warnings.join(' · ');
         referenceCount = Number(payload.total_references ?? allResults.length);
         referencesTruncated = Boolean(payload.references_truncated);
         citationsTruncated = Boolean(payload.citations_truncated);
@@ -514,6 +513,7 @@
         const doi = activeDoi || document.getElementById('doi-input').value.trim();
         if (feature === 'extract-references' && !file) throw new Error('เลือก PDF ก่อนสกัดด้วย AI');
         if (file) form.append('file', file); else if (doi) form.append('doi', doi); else throw new Error('เลือก PDF หรือ DOI ก่อนใช้ AI');
+        if (feature === 'extract-references') form.append('stream', 'true');
         form.append('provider', providerSelect.value);
         if (providerSelect.value === 'maxplus') form.append('base_url', document.getElementById('maxplus-base-url').value.trim());
         form.append('model', document.getElementById('summary-model').value.trim());
@@ -522,7 +522,8 @@
         document.querySelectorAll('[data-ai], #summary-button, #qa-form button').forEach(b => b.disabled = true);
         try {
           const response = await fetch(feature === 'summary' ? '/api/summarize' : '/api/ai/' + feature, {method: 'POST', body: form, headers: {'X-AI-API-Key': key}});
-          const payload = await response.json();
+          const payload = response.ok && response.headers.get('content-type')?.includes('application/x-ndjson')
+            ? await readExtractionStream(response) : await response.json();
           if (!response.ok) throw new Error(typeof payload.detail === 'string' ? payload.detail : 'ข้อมูลคำขอไม่ถูกต้อง');
           if (requestVersion !== sourceVersion || requestDataset !== activeDataset) throw new Error('งานต้นทางหรือชุดผลลัพธ์เปลี่ยนแล้ว กรุณาเรียกเครื่องมือกับชุดปัจจุบัน');
           return payload;
@@ -530,6 +531,35 @@
           aiBusy = false; updateDatasetTabs();
           document.querySelectorAll('[data-ai], #summary-button, #qa-form button').forEach(b => b.disabled = false);
         }
+      }
+      async function readExtractionStream(response) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let pending = '', result = null;
+        const output = document.getElementById('extraction-output');
+        const consume = line => {
+          if (!line.trim()) return;
+          const event = JSON.parse(line);
+          if (event.type === 'error') throw new Error(event.detail);
+          if (event.type === 'result') result = event.payload;
+          if (event.type === 'progress') {
+            output.textContent = event.stage === 'resolving'
+              ? `สกัดครบ ${event.total} ส่วนแล้ว กำลังค้นหา DOI และลิงก์สำหรับรายการทั้งหมด…`
+              : `สกัดด้วย AI แล้ว ${event.completed}/${event.total} ส่วน · ไฟล์ใหญ่จะใช้หลายคำขอและคิดค่า API ตามการใช้งาน`;
+          }
+        };
+        try {
+          while (true) {
+            const {done, value} = await reader.read();
+            pending += decoder.decode(value, {stream: !done});
+            let end;
+            while ((end = pending.indexOf('\n')) >= 0) { consume(pending.slice(0, end)); pending = pending.slice(end + 1); }
+            if (done) break;
+          }
+          consume(pending);
+          if (!result) throw new Error('การเชื่อมต่อจบก่อนสกัดครบ ผลชุดเดิมยังอยู่ ลองใช้โมเดลอื่นหรือแนบเฉพาะหน้าบรรณานุกรม');
+          return result;
+        } finally { await reader.cancel().catch(() => {}); }
       }
       document.getElementById('summary-button').onclick = async () => {
         const output = document.getElementById('summary-output');
@@ -551,12 +581,10 @@
             p.clusters.forEach((c, i) => c.ids.forEach(id => clusterColors.set(id, {color: palette[i], name: c.name})));
             document.getElementById('network-panel').open = true;
             setView('references');
-            const legend = document.getElementById('network-legend'); legend.replaceChildren(); legend.classList.remove('hidden');
-            p.clusters.forEach((c, i) => { const label = document.createElement('span'); label.style.color = palette[i]; label.textContent = '● ' + c.name; legend.append(label); });
             output.textContent = 'จัดสีธีมบนกราฟแล้ว · ธีมเป็นผลวิเคราะห์ AI จากชื่อเรื่องและ abstract ที่พบ';
           } else if (feature === 'extract-references') {
             p.filename = selectedFile.name.replace(/\.pdf$/i, '') || 'งานวิจัย';
-            displayPayload(p, 'ai'); output.textContent = 'สกัดด้วย AI แล้ว · เปิดแท็บ “สกัดด้วย AI” เพื่อดูผล และสลับกลับไปดูชุดโค้ดได้';
+            displayPayload(p, 'ai'); output.textContent = `สกัดด้วย AI แล้ว ${p.total_references} รายการ${p.extraction_batches ? ' จาก ' + p.extraction_batches + ' ส่วน' : ''} · ผลโค้ดยังอยู่ในแท็บเดิม${p.extraction_warnings?.length ? '\n' + p.extraction_warnings.join('\n') : ''}`;
           } else output.textContent = p.synthesis;
         } catch (e) { output.textContent = e.message; }
       });
@@ -724,248 +752,26 @@
       }
 
       function renderNetwork() {
-        const legend = document.getElementById('network-legend');
-        if (currentView === 'references' && clusterColors.size) {
-          legend.replaceChildren(); legend.classList.remove('hidden');
-          const themes = new Map([...clusterColors.values()].map(c => [c.name, c.color]));
-          for (const [name, color] of themes) { const label = document.createElement('span'); label.style.color = color; label.textContent = '● ' + name; legend.append(label); }
-        } else { legend.textContent = '● สีเขียว: มี citation link · สีเทา: ยังไม่พบ citation link'; legend.classList.toggle('hidden', resultMode === 'doi'); }
-        const svg = document.getElementById('citation-graph');
-        const namespace = 'http://www.w3.org/2000/svg';
-        const create = (tag, attributes = {}) => {
-          const node = document.createElementNS(namespace, tag);
-          for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
-          return node;
-        };
-        graphZoom = 1;
-        graphOffsetX = 0;
-        graphOffsetY = 0;
         const graphItems = currentView === 'citations'
-          ? (resultMode === 'doi' ? allCitingResults : allResults.filter((item) => Number(item.citation_mentions || 0) > 0))
-          : allResults;
-        const relationText = resultMode === 'doi'
-          ? (currentView === 'citations' ? 'ถูกอ้างโดย' : 'รายการอ้างอิง')
-          : 'รายการอ้างอิง';
-        const root = { x: 620, y: 76, initialX: 620, initialY: 76, item: null };
-        const nodes = [root];
-        let cursor = 0;
-        let rowSize = 1;
-        let row = 0;
-        while (cursor < graphItems.length) {
-          const count = Math.min(rowSize, graphItems.length - cursor);
-          for (let slot = 0; slot < count; slot += 1) {
-            const x = 620 + (slot - (count - 1) / 2) * 50;
-            const y = 202 + row * 82;
-            nodes.push({
-              x, y, initialX: x, initialY: y,
-              item: graphItems[cursor]
-            });
-            cursor += 1;
+          ? (resultMode === 'doi' ? allCitingResults : allResults.filter(item => Number(item.citation_mentions || 0) > 0)) : allResults;
+        const relationText = currentView === 'citations' && resultMode === 'doi' ? 'ถูกอ้างโดย' : 'รายการอ้างอิง';
+        document.getElementById('network-summary').textContent = `${sourceName} · ${graphItems.length} ${relationText}`;
+        document.getElementById('network-detail').textContent = 'งานต้นทางอยู่ด้านบน · กลุ่มสีเป็นการจัดวางตามสถานะการเข้าถึงหรือธีม AI · เส้นแสดงความสัมพันธ์กับงานต้นทาง ไม่ได้ระบุว่ารายการอ้างอิงอ้างถึงกันเอง';
+        window.PaperRefGraph.render({svg: document.getElementById('citation-graph'), items: graphItems,
+          sourceName, relationText, themes: currentView === 'references' ? clusterColors : new Map(),
+          allowSelection: currentView === 'references', isSelected: item => selectedPapers.has(item.reference_number),
+          onSelect: item => {
+            if (selectedPapers.has(item.reference_number)) selectedPapers.delete(item.reference_number);
+            else if (selectedPapers.size < 5) selectedPapers.add(item.reference_number);
+            else showAlert('เลือกได้สูงสุด 5 รายการ');
+            updateSelection(); renderResults();
+          },
+          onOpen: item => {
+            document.getElementById('search-input').value = ''; currentAccessFilter = 'all'; renderResults();
+            const card = document.querySelector(`[data-reference-number="${item.reference_number}"]`);
+            if (card) { card.scrollIntoView({behavior: 'smooth', block: 'center'}); card.classList.add('graph-highlight'); setTimeout(() => card.classList.remove('graph-highlight'), 1600); }
           }
-          row += 1;
-          rowSize += 2;
-        }
-        const graphHeight = Math.max(900, 228 + Math.max(0, row - 1) * 82);
-        svg.setAttribute('viewBox', `0 0 1240 ${graphHeight}`);
-
-        svg.replaceChildren();
-
-        document.getElementById('network-summary').textContent =
-          `${sourceName} เชื่อมกับ ${graphItems.length} ${relationText}`;
-        document.getElementById('network-detail').textContent = resultMode === 'doi'
-          ? `กราฟแสดงงานต้นทางและ${relationText} · ลากจุดหรือพื้นหลังเพื่อจัดวาง`
-          : (citationLinksAvailable
-            ? `${citationLinkCount} citation links ชี้ไปยัง ${citedReferenceCount} references · จุดสีเขียวอมฟ้าคือรายการที่มีลิงก์อ้างในเนื้อหา`
-            : 'กราฟแสดงรายการที่เชื่อมจากบรรณานุกรม · PDF นี้ไม่มี hyperlink ภายในสำหรับนับ citation');
-
-        svg.append(create('rect', {
-          x: '0', y: '0', width: '1240', height: String(graphHeight), fill: 'transparent', 'pointer-events': 'all'
-        }));
-        const world = create('g');
-        const edgeGroup = create('g', { 'stroke-linecap': 'round' });
-        const nodeGroup = create('g');
-        world.append(edgeGroup, nodeGroup);
-        svg.append(world);
-
-        const edges = [];
-        for (const node of nodes.slice(1)) {
-          const line = create('line', {
-            stroke: '#94a3b8',
-            'stroke-opacity': citationLinksAvailable && Number(node.item.citation_mentions || 0) > 0 ? '0.72' : '0.42',
-            'stroke-width': citationLinksAvailable && Number(node.item.citation_mentions || 0) > 0 ? '1.6' : '1.1'
-          });
-          edgeGroup.append(line);
-          edges.push({ line, node });
-        }
-
-        const elementToNode = new Map();
-        for (const node of nodes) {
-          const isRoot = node === root;
-          const group = create('g', {
-            'data-graph-node': 'true',
-            tabindex: '0',
-            role: isRoot ? 'img' : 'button',
-            'aria-label': isRoot
-              ? `งานวิจัยต้นทาง: ${sourceName}`
-              : `${resultMode === 'doi' && currentView === 'citations' ? 'Cited by' : 'Reference'} ${node.item.reference_number}: ${node.item.matched_title || node.item.title || node.item.original_text}`,
-            style: 'cursor:grab'
-          });
-          node.element = group;
-          elementToNode.set(group, node);
-
-          const tooltip = create('title');
-          tooltip.textContent = isRoot
-            ? `${sourceName} · ${graphItems.length} ${relationText}`
-            : `${relationText} ${node.item.reference_number} · ${node.item.matched_title || node.item.title || node.item.original_text}`;
-          group.append(tooltip);
-
-          if (isRoot) {
-            group.append(create('rect', {
-              x: node.x - 165, y: node.y - 38, width: '330', height: '76', rx: '18',
-              fill: '#f0fdfa', stroke: '#0f766e', 'stroke-width': '2'
-            }));
-            const label = create('text', {
-              x: node.x, y: node.y - 2, 'text-anchor': 'middle', fill: '#134e4a',
-              'font-size': '15', 'font-weight': '700'
-            });
-            label.textContent = sourceName.length > 34 ? sourceName.slice(0, 31) + '…' : sourceName;
-            const subtitle = create('text', {
-              x: node.x, y: node.y + 21, 'text-anchor': 'middle', fill: '#0f766e', 'font-size': '12'
-            });
-            subtitle.textContent = `${graphItems.length} ${relationText}`;
-            group.append(label, subtitle);
-          } else {
-            const cited = citationLinksAvailable && Number(node.item.citation_mentions || 0) > 0;
-            group.append(create('circle', {
-              cx: node.x, cy: node.y, r: '18',
-              fill: (currentView === 'references' && clusterColors.get(node.item.reference_number)?.color) || (cited ? '#0f766e' : '#cbd5e1'),
-              stroke: '#ffffff', 'stroke-width': '2'
-            }));
-            const label = create('text', {
-              x: node.x, y: node.y + 3.5, 'text-anchor': 'middle', fill: (cited || (currentView === 'references' && clusterColors.has(node.item.reference_number))) ? '#ffffff' : '#334155',
-              'font-size': '9', 'font-weight': '700', 'pointer-events': 'none'
-            });
-            label.textContent = String(node.item.reference_number);
-            group.append(label);
-          }
-          nodeGroup.append(group);
-        }
-
-        const updateGraph = () => {
-          world.setAttribute('transform', `translate(${graphOffsetX} ${graphOffsetY}) scale(${graphZoom})`);
-          for (const node of nodes) {
-            node.element.setAttribute('transform', `translate(${node.x - node.initialX} ${node.y - node.initialY})`);
-          }
-          for (const { line, node } of edges) {
-            line.setAttribute('x1', root.x);
-            line.setAttribute('y1', root.y + 38);
-            line.setAttribute('x2', node.x);
-            line.setAttribute('y2', node.y - 18);
-          }
-        };
-        const svgPoint = (event) => {
-          const point = svg.createSVGPoint();
-          point.x = event.clientX;
-          point.y = event.clientY;
-          return point.matrixTransform(svg.getScreenCTM().inverse());
-        };
-        const worldPoint = (point) => ({
-          x: (point.x - graphOffsetX) / graphZoom,
-          y: (point.y - graphOffsetY) / graphZoom
         });
-        let interaction = null;
-        svg.onpointerdown = (event) => {
-          const point = svgPoint(event);
-          const group = event.target.closest('[data-graph-node]');
-          if (group && elementToNode.has(group)) {
-            const node = elementToNode.get(group);
-            const position = worldPoint(point);
-            interaction = {
-              type: 'node', node, pointerId: event.pointerId, start: point,
-              offsetX: node.x - position.x, offsetY: node.y - position.y,
-              moved: false
-            };
-            group.style.cursor = 'grabbing';
-            group.setPointerCapture(event.pointerId);
-          } else {
-            interaction = {
-              type: 'pan', pointerId: event.pointerId, start: point,
-              offsetX: graphOffsetX, offsetY: graphOffsetY
-            };
-            svg.setPointerCapture(event.pointerId);
-          }
-        };
-        svg.onpointermove = (event) => {
-          if (!interaction || interaction.pointerId !== event.pointerId) return;
-          const point = svgPoint(event);
-          if (interaction.type === 'pan') {
-            graphOffsetX = interaction.offsetX + point.x - interaction.start.x;
-            graphOffsetY = interaction.offsetY + point.y - interaction.start.y;
-          } else {
-            if (Math.hypot(point.x - interaction.start.x, point.y - interaction.start.y) > 3) interaction.moved = true;
-            const position = worldPoint(point);
-            interaction.node.x = position.x + interaction.offsetX;
-            interaction.node.y = position.y + interaction.offsetY;
-          }
-          updateGraph();
-        };
-        const endInteraction = (event) => {
-          if (!interaction || interaction.pointerId !== event.pointerId) return;
-          if (interaction.type === 'node') {
-            interaction.node.element.style.cursor = 'grab';
-            interaction.node.wasDragged = interaction.moved;
-          }
-          interaction = null;
-        };
-        svg.onpointerup = endInteraction;
-        svg.onpointercancel = endInteraction;
-        svg.onwheel = (event) => {
-          event.preventDefault();
-          const point = svgPoint(event);
-          const anchored = worldPoint(point);
-          graphZoom = Math.min(2.5, Math.max(0.45, graphZoom * (event.deltaY < 0 ? 1.12 : 0.89)));
-          graphOffsetX = point.x - anchored.x * graphZoom;
-          graphOffsetY = point.y - anchored.y * graphZoom;
-          updateGraph();
-        };
-        const zoomAtCenter = (factor) => {
-          const point = { x: 620, y: graphHeight / 2 };
-          const anchored = worldPoint(point);
-          graphZoom = Math.min(2.5, Math.max(0.45, graphZoom * factor));
-          graphOffsetX = point.x - anchored.x * graphZoom;
-          graphOffsetY = point.y - anchored.y * graphZoom;
-          updateGraph();
-        };
-        document.getElementById('graph-zoom-in').onclick = () => zoomAtCenter(1.2);
-        document.getElementById('graph-zoom-out').onclick = () => zoomAtCenter(0.83);
-        document.getElementById('graph-reset').onclick = () => {
-          graphZoom = 1;
-          graphOffsetX = 0;
-          graphOffsetY = 0;
-          for (const node of nodes) { node.x = node.initialX; node.y = node.initialY; }
-          updateGraph();
-        };
-        for (const node of nodes.slice(1)) {
-          node.element.addEventListener('click', () => {
-            if (node.wasDragged) { node.wasDragged = false; return; }
-            document.getElementById('search-input').value = '';
-            currentAccessFilter = 'all';
-            renderResults();
-            const card = document.querySelector(`[data-reference-number="${node.item.reference_number}"]`);
-            if (card) {
-              card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              card.classList.add('ring-2', 'ring-teal-400');
-              setTimeout(() => card.classList.remove('ring-2', 'ring-teal-400'), 1800);
-            }
-          });
-          node.element.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              node.element.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-            }
-          });
-        }
-        updateGraph();
       }
 
       document.getElementById('search-input').addEventListener('input', renderResults);

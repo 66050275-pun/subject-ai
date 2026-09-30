@@ -363,7 +363,7 @@ def extract_citation_counts(
     return has_bibliography_links, dict(counts)
 
 
-def extract_bibliography_text(pdf_bytes: bytes, max_chars: int = 36000) -> str:
+def extract_bibliography_text(pdf_bytes: bytes, max_chars: int = 120000) -> str:
     """Bounded bibliography candidate for an explicit, paid AI fallback."""
     pages = _extract_text(pdf_bytes, sort=False)
     try:
@@ -425,3 +425,42 @@ def extract_citation_contexts(pdf_bytes: bytes, references: list[Reference]) -> 
                     if text and text in body_pages[page_index]:
                         add(int(match.group(1)), page_index + 1, text, 0, len(text), 'internal-link')
     return contexts
+
+
+def split_bibliography_batches(text: str, max_chars: int = 6000, max_entries: int = 16) -> list[str]:
+    """Pack whole entries when recognizable; overlap unstructured long fragments."""
+    bracketed = list(re.finditer(r'(?m)^\s*\[\d{1,4}\]\s+\S', text))
+    plain = list(re.finditer(r'(?m)^\s*\(?\d{1,3}[.)]\s+\S', text))
+    markers = bracketed if len(bracketed) >= 2 else plain
+    if len(markers) >= 2:
+        starts = [0] + [m.start() for m in markers if m.start() > 0]
+        units = [text[a:b] for a, b in zip(starts, starts[1:] + [len(text)])]
+    else:
+        units = re.split(r'\n\s*\n', text)
+    chunks = []
+    current = []
+    size = 0
+    for unit in units:
+        if not unit.strip():
+            continue
+        if len(unit) > max_chars:
+            if current:
+                chunks.append('\n'.join(current)); current = []; size = 0
+            offset = 0
+            while offset < len(unit):
+                end = min(offset + max_chars, len(unit))
+                if end < len(unit):
+                    boundary = unit.rfind('\n', offset + max_chars // 2, end)
+                    if boundary > offset:
+                        end = boundary
+                chunks.append(unit[offset:end])
+                if end == len(unit):
+                    break
+                offset = end - 350  # Preserve citations spanning a layout boundary.
+        else:
+            if current and (size + len(unit) + 1 > max_chars or len(current) >= max_entries):
+                chunks.append('\n'.join(current)); current = []; size = 0
+            current.append(unit); size += len(unit) + 1
+    if current:
+        chunks.append('\n'.join(current))
+    return chunks
