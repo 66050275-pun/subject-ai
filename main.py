@@ -8,7 +8,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from extractor import ExtractionError, extract_references
+from extractor import ExtractionError, extract_citation_counts, extract_references
 from resolver import resolve_references
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -60,10 +60,24 @@ async def find_references(file: UploadFile = File(...)) -> dict:
     except ExtractionError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    reference_numbers = {
+        reference.number for reference in references if reference.number is not None
+    }
+    citation_links_available, citation_counts = extract_citation_counts(
+        pdf_bytes, reference_numbers
+    )
     results = await resolve_references(references)
+    for index, (item, reference) in enumerate(zip(results, references), start=1):
+        number = reference.number or index
+        item["reference_number"] = number
+        item["citation_mentions"] = citation_counts.get(number, 0)
+
     return {
         "filename": filename,
         "total_references": len(results),
         "direct_links": sum(bool(item["paper_url"]) for item in results),
+        "citation_links_available": citation_links_available,
+        "citation_link_count": sum(citation_counts.values()),
+        "cited_reference_count": len(citation_counts),
         "results": results,
     }

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
 from dataclasses import dataclass
 
 import pymupdf as fitz
@@ -17,6 +18,7 @@ class Reference:
     original_text: str
     title: str
     year: str | None
+    number: int | None = None
 
 
 _HEADING_RE = re.compile(
@@ -31,6 +33,10 @@ _END_HEADING_RE = re.compile(
     re.IGNORECASE,
 )
 _NUMBERED_RE = re.compile(r"^\s*(?:\[(\d{1,4})\]|\(?\d{1,4}[.)])\s+\S")
+_NUMBERED_ENTRY_RE = re.compile(
+    r"^\s*(?:\[(?P<bracket>\d{1,4})\]|\(?(?P<plain>\d{1,4})[.)])\s+(?P<text>\S.*)$"
+)
+_BIB_DEST_RE = re.compile(r"(?:bib|reference)(\d+)$", re.IGNORECASE)
 _YEAR_RE = re.compile(r"(?<!\d)((?:18|19|20)\d{2})([a-z])?(?!\d)")
 _AUTHOR_YEAR_RE = re.compile(
     r"^[A-ZÀ-ÖØ-Þ][^\n]{0,140}?(?:\(\s*)?(?:18|19|20)\d{2}[a-z]?\)?(?=[.,;:\s]|$)"
@@ -152,16 +158,78 @@ def _split_entries(section: str) -> list[str]:
     return [entry for entry in entries if len(entry) >= 20]
 
 
+def _repeated_page_lines(page_text: list[str]) -> set[str]:
+    """Find repeated running headers and footers to skip while parsing entries."""
+    page_line_counts: Counter[str] = Counter()
+    for page in page_text:
+        page_line_counts.update(
+            {" ".join(line.split()).casefold() for line in page.splitlines() if line.strip()}
+        )
+    minimum_repetitions = max(3, (len(page_text) + 3) // 4)
+    return {
+        line for line, count in page_line_counts.items() if count >= minimum_repetitions
+    }
+
+
+def _split_numbered_entries(
+    section: str, repeated_lines: set[str]
+) -> list[tuple[int, str]]:
+    """Join wrapped numbered references, even when PDF layout inserts blanks."""
+    entries: dict[int, str] = {}
+    current_number: int | None = None
+    current: list[str] = []
+
+    def finish() -> None:
+        nonlocal current_number
+        value = re.sub(r"\s+", " ", " ".join(current)).strip()
+        if current_number is not None and len(value) >= 20:
+            entries.setdefault(current_number, value)
+        current_number = None
+        current.clear()
+
+    for raw_line in section.splitlines():
+        line = re.sub(r"\s+", " ", raw_line).strip()
+        if not line:
+            continue
+        if line.casefold() in repeated_lines:
+            continue
+        match = _NUMBERED_ENTRY_RE.match(line)
+        if match:
+            finish()
+            number = match.group("bracket") or match.group("plain")
+            current_number = int(number)
+            current.append(match.group("text"))
+        elif current_number is not None:
+            current.append(line)
+    finish()
+
+    if not entries:
+        return []
+    numbers = sorted(entries)
+    # Prefer numbered parsing only when the section has a substantial,
+    # mostly consecutive sequence. This avoids mistaking short numbered lists
+    # in an unnumbered bibliography for reference numbers.
+    if numbers[0] != 1 or len(numbers) < 3 or len(numbers) / numbers[-1] < 0.75:
+        return []
+    return [(number, entries[number]) for number in numbers]
+
+
 def _parse_references(page_text: list[str]) -> list[Reference]:
     section = _reference_section(page_text)
-    entries = _split_entries(section)
+    numbered_entries = _split_numbered_entries(section, _repeated_page_lines(page_text))
+    if numbered_entries:
+        entries = numbered_entries
+    else:
+        entries = list(enumerate(_split_entries(section), start=1))
     if not entries:
         raise ExtractionError("พบหัวข้อรายการอ้างอิง แต่ไม่พบรายการที่มีข้อมูลเพียงพอ")
 
     references: list[Reference] = []
-    for entry in entries:
+    for number, entry in entries:
         title, year = _title_and_year(entry)
-        references.append(Reference(original_text=entry, title=title, year=year))
+        references.append(
+            Reference(original_text=entry, title=title, year=year, number=number)
+        )
     return references
 
 
@@ -179,3 +247,33 @@ def extract_references(pdf_bytes: bytes) -> list[Reference]:
             return _parse_references(content_order_pages)
         except ExtractionError:
             raise visual_order_error
+
+
+def extract_citation_counts(
+    pdf_bytes: bytes, valid_reference_numbers: set[int]
+) -> tuple[bool, dict[int, int]]:
+    """Count PDF internal links that point to numbered bibliography entries."""
+    try:
+        document = fitz.open(stream=pdf_bytes, filetype="pdf")
+    except (fitz.FileDataError, ValueError, RuntimeError):
+        return False, {}
+
+    counts: Counter[int] = Counter()
+    has_bibliography_links = False
+    try:
+        for page in document:
+            for link in page.get_links():
+                destination = link.get("nameddest") or ""
+                match = _BIB_DEST_RE.search(destination)
+                if not match:
+                    continue
+                number = int(match.group(1))
+                if number in valid_reference_numbers:
+                    has_bibliography_links = True
+                    counts[number] += 1
+    except (fitz.FileDataError, RuntimeError):
+        return False, {}
+    finally:
+        document.close()
+
+    return has_bibliography_links, dict(counts)
