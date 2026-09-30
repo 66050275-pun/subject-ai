@@ -97,7 +97,7 @@
       <div class="flex flex-col justify-between gap-5 border-b border-slate-200 pb-6 sm:flex-row sm:items-end">
         <div>
           <p class="text-sm font-medium text-teal-700">ผลการวิเคราะห์</p>
-          <h2 class="mt-1 text-2xl font-bold tracking-tight text-slate-950">รายการอ้างอิงของคุณ</h2>
+          <h2 id="results-heading" class="mt-1 text-2xl font-bold tracking-tight text-slate-950">รายการอ้างอิงของคุณ</h2>
           <p id="result-filename" class="mt-1 max-w-lg truncate text-sm text-slate-500"></p>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -110,18 +110,30 @@
         </div>
       </div>
 
+      <section id="source-paper-card" class="mt-6 hidden rounded-2xl border border-teal-200 bg-teal-50/70 p-5 shadow-sm" aria-label="งานวิจัยต้นทาง">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div class="min-w-0">
+            <p class="text-xs font-semibold uppercase tracking-wide text-teal-800">งานวิจัยต้นทาง</p>
+            <h3 id="source-paper-title" class="mt-1 text-lg font-bold leading-7 text-slate-900"></h3>
+            <p id="source-paper-meta" class="mt-1 text-sm text-slate-600"></p>
+          </div>
+          <span id="source-paper-access" class="inline-flex w-fit shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold"></span>
+        </div>
+        <div id="source-paper-links" class="mt-3 flex flex-wrap gap-2"></div>
+      </section>
+
       <div class="mt-6 grid gap-3 sm:grid-cols-3">
         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p class="text-sm text-slate-500">ตรวจพบ References</p>
+          <p id="total-stat-label" class="text-sm text-slate-500">ตรวจพบ References</p>
           <p id="total-stat" class="mt-1 text-3xl font-bold tracking-tight text-slate-950">0</p>
         </div>
         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p class="text-sm text-slate-500">Citation links ในเนื้อหา</p>
+          <p id="citation-stat-label" class="text-sm text-slate-500">Citation links ในเนื้อหา</p>
           <p id="citation-stat" class="mt-1 text-3xl font-bold tracking-tight text-indigo-700">—</p>
           <p id="citation-stat-caption" class="mt-1 text-xs text-slate-500">ตรวจจากลิงก์ภายใน PDF</p>
         </div>
         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p class="text-sm text-slate-500">พบลิงก์ไปยังเปเปอร์</p>
+          <p id="links-stat-label" class="text-sm text-slate-500">พบลิงก์ไปยังเปเปอร์</p>
           <p id="links-stat" class="mt-1 text-3xl font-bold tracking-tight text-teal-700">0</p>
         </div>
       </div>
@@ -132,7 +144,7 @@
             <h3 id="network-heading" class="font-semibold text-slate-900">เครือข่ายการอ้างอิง</h3>
             <p id="network-summary" class="mt-1 text-sm text-slate-600"></p>
           </div>
-          <div class="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
+          <div id="network-legend" class="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
             <span class="inline-flex items-center gap-2"><i class="h-2.5 w-2.5 rounded-full bg-teal-600"></i>มี citation link ในเนื้อหา</span>
             <span class="inline-flex items-center gap-2"><i class="h-2.5 w-2.5 rounded-full bg-slate-300"></i>ยังไม่พบ citation link</span>
           </div>
@@ -157,7 +169,8 @@
           <button id="citations-tab" type="button" role="tab" aria-selected="false" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Citation ในเนื้อหา</button>
         </div>
         <p id="view-description" class="mt-2 text-sm text-slate-500"></p>
-        <p id="citation-unavailable" class="mt-3 hidden rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">PDF นี้ไม่มีลิงก์ภายในที่ชี้ไปยังรายการอ้างอิง จึงยังแยก Citation ในเนื้อหาอัตโนมัติไม่ได้</p>
+        <p id="citation-unavailable" class="mt-3 hidden rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">ยังไม่มีข้อมูล citation ที่แสดงได้</p>
+        <p id="relationship-note" class="mt-2 hidden text-xs leading-5 text-slate-500"></p>
       </div>
 
       <div class="mt-8 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
@@ -168,6 +181,7 @@
           <input id="search-input" type="search" placeholder="ค้นหาชื่อเปเปอร์ หรือ DOI..." class="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm outline-none placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100">
         </label>
       </div>
+      <div id="access-filters" class="mt-3 flex flex-wrap gap-2" aria-label="จัดกลุ่มตามการเข้าถึง"></div>
       <div id="results-list" class="mt-4 space-y-3"></div>
       <div id="empty-search" class="hidden rounded-xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center text-sm text-slate-500">ไม่พบรายการที่ตรงกับคำค้น</div>
     </section>
@@ -186,11 +200,17 @@
       const resultsList = document.getElementById('results-list');
       let selectedFile = null;
       let allResults = [];
+      let allCitingResults = [];
+      let resultMode = 'pdf';
       let sourceName = 'references';
+      let referenceCount = 0;
+      let referencesTruncated = false;
+      let citationsTruncated = false;
       let citationLinksAvailable = false;
       let citationLinkCount = 0;
       let citedReferenceCount = 0;
       let currentView = 'references';
+      let currentAccessFilter = 'all';
       let graphZoom = 1;
       let graphOffsetX = 0;
       let graphOffsetY = 0;
@@ -202,6 +222,26 @@
           : 'border-rose-200 bg-rose-50 text-rose-800');
       }
       function hideAlert() { alertBox.classList.add('hidden'); }
+
+      function renderSourcePaper(paper) {
+        const card = document.getElementById('source-paper-card');
+        const links = document.getElementById('source-paper-links');
+        if (!paper) { card.classList.add('hidden'); return; }
+        card.classList.remove('hidden');
+        document.getElementById('source-paper-title').textContent = paper.matched_title || paper.title || paper.doi || 'ไม่พบชื่อเรื่อง';
+        document.getElementById('source-paper-meta').textContent = [
+          paper.year,
+          paper.doi ? 'DOI: ' + paper.doi : null,
+          Array.isArray(paper.metadata_sources) && paper.metadata_sources.length ? paper.metadata_sources.join(' · ') : null,
+        ].filter(Boolean).join(' · ');
+        const badge = document.getElementById('source-paper-access');
+        badge.textContent = paper.access_label || 'ยังไม่พบข้อมูลการเข้าถึง';
+        badge.className = 'inline-flex w-fit shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ' + accessBadgeStyle(paper.access_status);
+        links.replaceChildren();
+        if (paper.oa_pdf_url) links.append(makeLink('↓  ดาวน์โหลด PDF', paper.oa_pdf_url, 'bg-emerald-700 text-white hover:bg-emerald-800'));
+        if (paper.paper_url) links.append(makeLink('↗  เปิดหน้าบทความ', paper.paper_url, 'bg-teal-700 text-white hover:bg-teal-800'));
+        if (paper.scholar_url) links.append(makeLink('⌕  Google Scholar', paper.scholar_url, 'bg-slate-100 text-slate-700 hover:bg-slate-200'));
+      }
 
       function chooseFile(file) {
         hideAlert();
@@ -230,25 +270,50 @@
         document.getElementById('button-label').textContent = busy ? 'กำลังสกัดและค้นหาลิงก์...' : 'ค้นหารายการอ้างอิง';
       }
       function displayPayload(payload) {
+        resultMode = payload.mode || 'pdf';
         allResults = payload.results || [];
+        allCitingResults = payload.citing_papers || [];
         sourceName = payload.filename || 'references';
+        referenceCount = Number(payload.total_references ?? allResults.length);
+        referencesTruncated = Boolean(payload.references_truncated);
+        citationsTruncated = Boolean(payload.citations_truncated);
         citationLinksAvailable = Boolean(payload.citation_links_available);
         citationLinkCount = Number(payload.citation_link_count || 0);
         citedReferenceCount = Number(payload.cited_reference_count || 0);
+        renderSourcePaper(resultMode === 'doi' ? payload.source_paper : null);
+        document.getElementById('network-legend').classList.toggle('hidden', resultMode === 'doi');
         document.getElementById('result-filename').textContent = sourceName;
-        document.getElementById('total-stat').textContent = payload.total_references ?? allResults.length;
+        document.getElementById('results-heading').textContent = resultMode === 'doi' ? 'เครือข่ายการอ้างอิงของงานวิจัยนี้' : 'รายการอ้างอิงของคุณ';
+        document.getElementById('total-stat-label').textContent = resultMode === 'doi' ? 'รายการที่งานนี้อ้างถึง' : 'ตรวจพบ References';
+        document.getElementById('citation-stat-label').textContent = resultMode === 'doi' ? 'ถูกอ้างโดย (ฐานข้อมูล)' : 'Citation links ในเนื้อหา';
+        document.getElementById('links-stat-label').textContent = resultMode === 'doi' ? 'รายการอ้างอิงที่มีลิงก์' : 'พบลิงก์ไปยังเปเปอร์';
+        document.getElementById('total-stat').textContent = referenceCount;
         document.getElementById('links-stat').textContent = payload.direct_links ?? allResults.filter((item) => item.paper_url).length;
-        document.getElementById('citation-stat').textContent = citationLinksAvailable ? citationLinkCount : '—';
-        document.getElementById('citation-stat-caption').textContent = citationLinksAvailable
-          ? `${citedReferenceCount} references มีลิงก์ citation`
-          : 'PDF ไม่มีลิงก์ citation ภายใน';
+        document.getElementById('citation-stat').textContent = resultMode === 'doi' ? citationLinkCount : (citationLinksAvailable ? citationLinkCount : '—');
+        document.getElementById('citation-stat-caption').textContent = resultMode === 'doi'
+          ? `แสดง ${allCitingResults.length} รายการ${citationsTruncated ? ' จากตัวอย่างที่ดึงมา' : ''}`
+          : (citationLinksAvailable ? `${citedReferenceCount} references มีลิงก์ citation` : 'PDF ไม่มีลิงก์ citation ภายใน');
+        document.getElementById('references-tab').textContent = resultMode === 'doi' ? `รายการอ้างอิง (${allResults.length})` : 'รายการอ้างอิง';
+        document.getElementById('citations-tab').textContent = resultMode === 'doi' ? `ถูกอ้างโดย (${allCitingResults.length})` : 'Citation ในเนื้อหา';
         document.getElementById('citations-tab').disabled = !citationLinksAvailable;
         document.getElementById('citations-tab').classList.toggle('cursor-not-allowed', !citationLinksAvailable);
         document.getElementById('citations-tab').classList.toggle('opacity-50', !citationLinksAvailable);
+        document.getElementById('citation-unavailable').textContent = resultMode === 'doi'
+          ? 'ยังไม่พบรายการงานที่อ้างถึงจาก OpenAlex หรือ Semantic Scholar สำหรับ DOI นี้'
+          : 'PDF นี้ไม่มีลิงก์ภายในที่ชี้ไปยังรายการอ้างอิง จึงยังแยก Citation ในเนื้อหาอัตโนมัติไม่ได้';
         document.getElementById('citation-unavailable').classList.toggle('hidden', citationLinksAvailable);
+        const relationshipNote = document.getElementById('relationship-note');
+        const notes = [];
+        if (resultMode === 'doi' && Array.isArray(payload.relationship_sources) && payload.relationship_sources.length) {
+          notes.push('รวบรวมจาก ' + payload.relationship_sources.join(' · '));
+        }
+        if (referencesTruncated) notes.push(`แสดง ${allResults.length} จาก ${referenceCount} รายการอ้างอิง`);
+        if (resultMode === 'doi' && citationsTruncated) notes.push(`แสดงตัวอย่าง “ถูกอ้างโดย” ${allCitingResults.length} จากทั้งหมด ${citationLinkCount} รายการ`);
+        relationshipNote.textContent = notes.join(' · ');
+        relationshipNote.classList.toggle('hidden', notes.length === 0);
         document.getElementById('search-input').value = '';
+        currentAccessFilter = 'all';
         setView('references');
-        renderNetwork();
         resultSection.classList.remove('hidden');
         resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
@@ -352,13 +417,48 @@
         link.className = 'inline-flex items-center rounded-lg px-3 py-2 text-xs font-semibold transition ' + style;
         return link;
       }
-      function renderResults() {
+      function accessBadgeStyle(status) {
+        if (status === 'pdf_available') return 'bg-emerald-100 text-emerald-800';
+        if (status === 'open_source_record') return 'bg-sky-100 text-sky-800';
+        return 'bg-amber-100 text-amber-800';
+      }
+      function viewItems() {
+        if (currentView !== 'citations') return allResults;
+        return resultMode === 'doi'
+          ? allCitingResults
+          : allResults.filter((item) => Number(item.citation_mentions || 0) > 0);
+      }
+      function visibleItems() {
         const query = document.getElementById('search-input').value.trim().toLowerCase();
-        const viewResults = currentView === 'citations'
-          ? allResults.filter((item) => Number(item.citation_mentions || 0) > 0)
-          : allResults;
-        const filtered = viewResults.filter((item) => [item.title, item.matched_title, item.original_text, item.doi, item.year]
-          .some((value) => String(value || '').toLowerCase().includes(query)));
+        return viewItems().filter((item) => {
+          const matchesAccess = currentAccessFilter === 'all' || (item.access_status || 'scholar_search') === currentAccessFilter;
+          const matchesQuery = [item.title, item.matched_title, item.original_text, item.doi, item.year]
+            .some((value) => String(value || '').toLowerCase().includes(query));
+          return matchesAccess && matchesQuery;
+        });
+      }
+      function renderResults() {
+        const viewResults = viewItems();
+        const filtered = visibleItems();
+        const filterHost = document.getElementById('access-filters');
+        const categories = [
+          { key: 'all', label: 'ทั้งหมด', count: viewResults.length },
+          { key: 'pdf_available', label: 'ดาวน์โหลด PDF ได้', count: viewResults.filter((item) => item.access_status === 'pdf_available').length },
+          { key: 'open_source_record', label: 'พบในฐานข้อมูลเปิด', count: viewResults.filter((item) => item.access_status === 'open_source_record').length },
+          { key: 'scholar_search', label: 'ค้นต่อใน Google Scholar', count: viewResults.filter((item) => !item.access_status || item.access_status === 'scholar_search').length },
+        ];
+        filterHost.replaceChildren();
+        for (const category of categories) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.setAttribute('aria-pressed', String(currentAccessFilter === category.key));
+          button.className = currentAccessFilter === category.key
+            ? 'rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white'
+            : 'rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50';
+          button.textContent = `${category.label} (${category.count})`;
+          button.addEventListener('click', () => { currentAccessFilter = category.key; renderResults(); });
+          filterHost.append(button);
+        }
         resultsList.replaceChildren();
         document.getElementById('visible-count').textContent = `(${filtered.length} รายการ)`;
         document.getElementById('empty-search').classList.toggle('hidden', filtered.length !== 0);
@@ -377,7 +477,17 @@
           const meta = document.createElement('p'); meta.className = 'mt-1 text-xs text-slate-500';
           meta.textContent = [item.year, item.doi ? 'DOI: ' + item.doi : null].filter(Boolean).join(' · ') || 'ยังไม่พบ DOI';
           content.append(meta);
-          if (citationLinksAvailable) {
+          const accessBadge = document.createElement('span');
+          accessBadge.className = 'mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ' + accessBadgeStyle(item.access_status);
+          accessBadge.textContent = item.access_label || 'ค้นต่อใน Google Scholar';
+          content.append(accessBadge);
+          if (item.access_detail) {
+            const accessDetail = document.createElement('p');
+            accessDetail.className = 'mt-1 text-xs text-slate-500';
+            accessDetail.textContent = item.access_detail;
+            content.append(accessDetail);
+          }
+          if (resultMode === 'pdf' && citationLinksAvailable) {
             const citationBadge = document.createElement('p');
             citationBadge.className = 'mt-2 text-xs font-medium ' + (Number(item.citation_mentions || 0) > 0 ? 'text-indigo-700' : 'text-slate-400');
             citationBadge.textContent = Number(item.citation_mentions || 0) > 0
@@ -411,6 +521,7 @@
       function setView(view) {
         if (view === 'citations' && !citationLinksAvailable) return;
         currentView = view;
+        currentAccessFilter = 'all';
         const referencesTab = document.getElementById('references-tab');
         const citationsTab = document.getElementById('citations-tab');
         const active = 'rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white';
@@ -420,11 +531,20 @@
         if (!citationLinksAvailable) citationsTab.classList.add('cursor-not-allowed', 'opacity-50');
         referencesTab.setAttribute('aria-selected', String(view === 'references'));
         citationsTab.setAttribute('aria-selected', String(view === 'citations'));
-        document.getElementById('view-title').textContent = view === 'references' ? 'รายการอ้างอิง' : 'Citation ในเนื้อหา';
-        document.getElementById('view-description').textContent = view === 'references'
-          ? `รายการจากบรรณานุกรมท้าย PDF จำนวน ${allResults.length} รายการ`
-          : `พบ ${citationLinkCount} citation links ในเนื้อหา ซึ่งชี้ไปยัง ${citedReferenceCount} references`;
+        document.getElementById('view-title').textContent = view === 'references'
+          ? 'รายการอ้างอิง'
+          : (resultMode === 'doi' ? 'งานวิจัยที่อ้างถึงบทความนี้' : 'Citation ในเนื้อหา');
+        if (resultMode === 'doi') {
+          document.getElementById('view-description').textContent = view === 'references'
+            ? `พบ ${referenceCount} references จาก ${allResults.length} รายการที่แสดง`
+            : `ฐานข้อมูลระบุ ${citationLinkCount} citations · แสดงรายชื่อได้ ${allCitingResults.length} งาน`;
+        } else {
+          document.getElementById('view-description').textContent = view === 'references'
+            ? `รายการจากบรรณานุกรมท้าย PDF จำนวน ${allResults.length} รายการ`
+            : `พบ ${citationLinkCount} citation links ในเนื้อหา ซึ่งชี้ไปยัง ${citedReferenceCount} references`;
+        }
         renderResults();
+        renderNetwork();
       }
 
       function renderNetwork() {
@@ -438,36 +558,46 @@
         graphZoom = 1;
         graphOffsetX = 0;
         graphOffsetY = 0;
+        const graphItems = currentView === 'citations'
+          ? (resultMode === 'doi' ? allCitingResults : allResults.filter((item) => Number(item.citation_mentions || 0) > 0))
+          : allResults;
+        const relationText = resultMode === 'doi'
+          ? (currentView === 'citations' ? 'ถูกอ้างโดย' : 'รายการอ้างอิง')
+          : 'รายการอ้างอิง';
         const root = { x: 620, y: 76, initialX: 620, initialY: 76, item: null };
         const nodes = [root];
         let cursor = 0;
         let rowSize = 1;
         let row = 0;
-        while (cursor < allResults.length) {
-          const count = Math.min(rowSize, allResults.length - cursor);
+        while (cursor < graphItems.length) {
+          const count = Math.min(rowSize, graphItems.length - cursor);
           for (let slot = 0; slot < count; slot += 1) {
             const x = 620 + (slot - (count - 1) / 2) * 50;
             const y = 202 + row * 82;
             nodes.push({
               x, y, initialX: x, initialY: y,
-              item: allResults[cursor]
+              item: graphItems[cursor]
             });
             cursor += 1;
           }
           row += 1;
           rowSize += 2;
         }
+        const graphHeight = Math.max(900, 228 + Math.max(0, row - 1) * 82);
+        svg.setAttribute('viewBox', `0 0 1240 ${graphHeight}`);
 
         svg.replaceChildren();
 
         document.getElementById('network-summary').textContent =
-          `${sourceName} เชื่อมไปยัง ${allResults.length} รายการอ้างอิง`;
-        document.getElementById('network-detail').textContent = citationLinksAvailable
-          ? `${citationLinkCount} citation links ชี้ไปยัง ${citedReferenceCount} references · จุดสีเขียวอมฟ้าคือรายการที่มีลิงก์อ้างในเนื้อหา`
-          : 'กราฟแสดงรายการที่เชื่อมจากบรรณานุกรม · PDF นี้ไม่มี hyperlink ภายในสำหรับนับ citation';
+          `${sourceName} เชื่อมกับ ${graphItems.length} ${relationText}`;
+        document.getElementById('network-detail').textContent = resultMode === 'doi'
+          ? `กราฟแสดงงานต้นทางและ${relationText} · ลากจุดหรือพื้นหลังเพื่อจัดวาง`
+          : (citationLinksAvailable
+            ? `${citationLinkCount} citation links ชี้ไปยัง ${citedReferenceCount} references · จุดสีเขียวอมฟ้าคือรายการที่มีลิงก์อ้างในเนื้อหา`
+            : 'กราฟแสดงรายการที่เชื่อมจากบรรณานุกรม · PDF นี้ไม่มี hyperlink ภายในสำหรับนับ citation');
 
         svg.append(create('rect', {
-          x: '0', y: '0', width: '1240', height: '900', fill: 'transparent', 'pointer-events': 'all'
+          x: '0', y: '0', width: '1240', height: String(graphHeight), fill: 'transparent', 'pointer-events': 'all'
         }));
         const world = create('g');
         const edgeGroup = create('g', { 'stroke-linecap': 'round' });
@@ -495,7 +625,7 @@
             role: isRoot ? 'img' : 'button',
             'aria-label': isRoot
               ? `งานวิจัยต้นทาง: ${sourceName}`
-              : `Reference ${node.item.reference_number}: ${node.item.matched_title || node.item.title || node.item.original_text}`,
+              : `${resultMode === 'doi' && currentView === 'citations' ? 'Cited by' : 'Reference'} ${node.item.reference_number}: ${node.item.matched_title || node.item.title || node.item.original_text}`,
             style: 'cursor:grab'
           });
           node.element = group;
@@ -503,8 +633,8 @@
 
           const tooltip = create('title');
           tooltip.textContent = isRoot
-            ? `${sourceName} · ${allResults.length} references`
-            : `Reference ${node.item.reference_number} · ${Number(node.item.citation_mentions || 0)} citation links · ${node.item.matched_title || node.item.title || node.item.original_text}`;
+            ? `${sourceName} · ${graphItems.length} ${relationText}`
+            : `${relationText} ${node.item.reference_number} · ${node.item.matched_title || node.item.title || node.item.original_text}`;
           group.append(tooltip);
 
           if (isRoot) {
@@ -520,7 +650,7 @@
             const subtitle = create('text', {
               x: node.x, y: node.y + 21, 'text-anchor': 'middle', fill: '#0f766e', 'font-size': '12'
             });
-            subtitle.textContent = `${allResults.length} references`;
+            subtitle.textContent = `${graphItems.length} ${relationText}`;
             group.append(label, subtitle);
           } else {
             const cited = citationLinksAvailable && Number(node.item.citation_mentions || 0) > 0;
@@ -617,7 +747,7 @@
           updateGraph();
         };
         const zoomAtCenter = (factor) => {
-          const point = { x: 620, y: 450 };
+          const point = { x: 620, y: graphHeight / 2 };
           const anchored = worldPoint(point);
           graphZoom = Math.min(2.5, Math.max(0.45, graphZoom * factor));
           graphOffsetX = point.x - anchored.x * graphZoom;
@@ -637,8 +767,8 @@
           node.element.addEventListener('click', () => {
             if (node.wasDragged) { node.wasDragged = false; return; }
             document.getElementById('search-input').value = '';
-            if (currentView !== 'references') setView('references');
-            else renderResults();
+            currentAccessFilter = 'all';
+            renderResults();
             const card = document.querySelector(`[data-reference-number="${node.item.reference_number}"]`);
             if (card) {
               card.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -666,18 +796,22 @@
         document.body.append(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
       document.getElementById('export-json').addEventListener('click', () => {
-        downloadBlob(JSON.stringify(allResults, null, 2), sourceName + '-references.json', 'application/json;charset=utf-8');
+        const exportItems = visibleItems();
+        const suffix = currentView === 'citations' ? '-citing-papers' : '-references';
+        downloadBlob(JSON.stringify(exportItems, null, 2), sourceName + suffix + '.json', 'application/json;charset=utf-8');
       });
       document.getElementById('export-csv').addEventListener('click', () => {
-        const columns = ['reference_number', 'citation_mentions', 'original_text', 'title', 'year', 'matched_title', 'doi', 'paper_url', 'oa_pdf_url', 'metadata_sources', 'scholar_url'];
+        const exportItems = visibleItems();
+        const suffix = currentView === 'citations' ? '-citing-papers' : '-references';
+        const columns = ['reference_number', 'citation_mentions', 'original_text', 'title', 'year', 'matched_title', 'doi', 'paper_url', 'oa_pdf_url', 'access_status', 'access_label', 'metadata_sources', 'scholar_url'];
         const escape = (value) => {
           let text = String(value ?? '');
           if (/^\s*[=+@-]/.test(text)) text = "'" + text;
           return '"' + text.replace(/"/g, '""') + '"';
         };
-        const csv = [columns, ...allResults.map((item) => columns.map((key) => item[key] ?? ''))]
+        const csv = [columns, ...exportItems.map((item) => columns.map((key) => item[key] ?? ''))]
           .map((row) => row.map(escape).join(',')).join('\r\n');
-        downloadBlob('\ufeff' + csv, sourceName + '-references.csv', 'text/csv;charset=utf-8');
+        downloadBlob('\ufeff' + csv, sourceName + suffix + '.csv', 'text/csv;charset=utf-8');
       });
     })();
   </script>

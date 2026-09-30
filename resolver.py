@@ -306,6 +306,21 @@ def _add_source(result: dict, source_name: str, metadata: dict) -> None:
         result["source_links"].append({"name": source_name, "url": record_url})
 
 
+def _set_access_category(result: dict) -> None:
+    if result.get("oa_pdf_url"):
+        result["access_status"] = "pdf_available"
+        result["access_label"] = "ดาวน์โหลด PDF ได้"
+        result["access_detail"] = "พบลิงก์ PDF ที่เปิดให้อ่านได้จากแหล่งข้อมูล"
+    elif any(source in result.get("metadata_sources", []) for source in ("OpenAlex", "Semantic Scholar")):
+        result["access_status"] = "open_source_record"
+        result["access_label"] = "พบระเบียนในฐานข้อมูลเปิด"
+        result["access_detail"] = "พบระเบียน แต่ยังไม่มีลิงก์ PDF ดาวน์โหลดตรง"
+    else:
+        result["access_status"] = "scholar_search"
+        result["access_label"] = "ค้นต่อใน Google Scholar"
+        result["access_detail"] = "ยังไม่พบ PDF หรือระเบียนจากแหล่ง Open Access ที่ค้นไว้"
+
+
 async def _resolve_one(
     client: httpx.AsyncClient, semaphore: asyncio.Semaphore, reference: Reference
 ) -> dict:
@@ -343,7 +358,9 @@ async def _resolve_one(
                     pass
 
         effective_title = result["matched_title"] or reference.title
-        if _usable_title(effective_title):
+        # DOI references have already been checked against exact DOI records in
+        # OpenAlex and Semantic Scholar; avoid repeating title-search requests.
+        if not reference.doi and _usable_title(effective_title):
             lookup_reference = replace(reference, title=effective_title)
             try:
                 openalex = await _openalex_lookup(client, lookup_reference)
@@ -364,6 +381,7 @@ async def _resolve_one(
     if not _usable_title(search_text):
         search_text = reference.original_text
     result["scholar_url"] = "https://scholar.google.com/scholar?q=" + quote_plus(search_text)
+    _set_access_category(result)
     return result
 
 
@@ -435,6 +453,7 @@ async def lookup_doi(value: str) -> dict:
                 pass
         search_text = result["matched_title"] or doi
         result["scholar_url"] = "https://scholar.google.com/scholar?q=" + quote_plus(search_text)
+        _set_access_category(result)
         result["reference_number"] = 1
         result["citation_mentions"] = 0
         return result
@@ -495,4 +514,278 @@ async def fetch_doi_summary_material(value: str) -> dict:
         "authors": author_names,
         "abstract": abstract,
         "source": "Crossref/OpenAlex metadata",
+    }
+
+
+def _crossref_reference_to_reference(item: dict, index: int) -> Reference:
+    title = str(item.get("article-title") or item.get("volume-title") or "").strip()
+    author = str(item.get("author") or "").strip()
+    year = str(item.get("year") or "").strip() or None
+    doi_value = str(item.get("DOI") or "").strip()
+    doi = normalize_doi(doi_value) if doi_value else None
+    unstructured = str(item.get("unstructured") or "").strip()
+    pieces = [part for part in (
+        author,
+        f"({year})" if year else "",
+        title,
+        str(item.get("journal-title") or "").strip(),
+        str(item.get("volume") or "").strip(),
+        str(item.get("first-page") or "").strip(),
+        f"DOI: {doi}" if doi else "",
+    ) if part]
+    original = unstructured or ". ".join(pieces) or f"Crossref reference {index}"
+    return Reference(original_text=original, title=title, year=year, number=index, doi=doi)
+
+
+def _openalex_work_to_reference(work: dict, index: int) -> Reference:
+    title = str(work.get("display_name") or "").strip()
+    year = str(work.get("publication_year") or "").strip() or None
+    raw_doi = work.get("doi")
+    doi = normalize_doi(str(raw_doi)) if raw_doi else None
+    authors = [
+        (authorship.get("author") or {}).get("display_name")
+        for authorship in (work.get("authorships") or [])[:4]
+    ]
+    authors = [str(author) for author in authors if author]
+    original = ", ".join(authors)
+    if year:
+        original += f" ({year})"
+    if title:
+        original += f". {title}"
+    if doi:
+        original += f". DOI: {doi}"
+    if not original:
+        original = str(work.get("id") or f"OpenAlex work {index}")
+    return Reference(original_text=original, title=title, year=year, number=index, doi=doi)
+
+
+def _semantic_scholar_work_to_reference(work: dict, index: int) -> Reference:
+    title = str(work.get("title") or "").strip()
+    year = str(work.get("year") or "").strip() or None
+    ids = work.get("externalIds") or {}
+    raw_doi = ids.get("DOI")
+    doi = normalize_doi(str(raw_doi)) if raw_doi else None
+    authors = [str(author.get("name") or "") for author in (work.get("authors") or [])[:4]]
+    authors = [author for author in authors if author]
+    original = ", ".join(authors)
+    if year:
+        original += f" ({year})"
+    if title:
+        original += f". {title}"
+    if doi:
+        original += f". DOI: {doi}"
+    if not original:
+        original = str(work.get("url") or f"Semantic Scholar work {index}")
+    return Reference(original_text=original, title=title, year=year, number=index, doi=doi)
+
+
+async def _openalex_relationships(client: httpx.AsyncClient, doi: str) -> dict:
+    fields = "id,display_name,doi,publication_year,authorships,referenced_works,cited_by_count"
+    response = await client.get(OPENALEX_URL, params={
+        "filter": f"doi:https://doi.org/{doi}", "per-page": 1, "select": fields,
+    })
+    response.raise_for_status()
+    works = response.json().get("results", [])
+    if not works:
+        return {"references": [], "citing": [], "reference_count": 0, "citation_count": 0}
+    source = works[0]
+    source_id = str(source.get("id") or "").rsplit("/", 1)[-1]
+    reference_ids = [str(value).rsplit("/", 1)[-1] for value in (source.get("referenced_works") or [])]
+    reference_ids = reference_ids[:100]
+    citing_works: list[dict] = []
+    citing_count = int(source.get("cited_by_count") or 0)
+    if source_id:
+        try:
+            citing_response = await client.get(OPENALEX_URL, params={
+                "filter": f"cites:{source_id}",
+                "per-page": 20,
+                "sort": "cited_by_count:desc",
+                "select": "id,display_name,doi,publication_year,authorships",
+            })
+            citing_response.raise_for_status()
+            citing_payload = citing_response.json()
+            citing_works = citing_payload.get("results", [])
+            citing_count = max(citing_count, int((citing_payload.get("meta") or {}).get("count") or 0))
+        except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+
+    reference_works: list[dict] = []
+    if reference_ids:
+        try:
+            references_response = await client.get(OPENALEX_URL, params={
+                "filter": "openalex_id:" + "|".join(reference_ids),
+                "per-page": min(len(reference_ids), 100),
+                "select": "id,display_name,doi,publication_year,authorships",
+            })
+            references_response.raise_for_status()
+            reference_works = references_response.json().get("results", [])
+        except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+    return {
+        "references": [_openalex_work_to_reference(work, index) for index, work in enumerate(reference_works, 1)],
+        "citing": [_openalex_work_to_reference(work, index) for index, work in enumerate(citing_works, 1)],
+        "reference_count": len(source.get("referenced_works") or []),
+        "citation_count": citing_count,
+    }
+
+
+async def _semantic_scholar_relationships(client: httpx.AsyncClient, doi: str) -> dict:
+    paper_id = quote("DOI:" + doi, safe=":")
+    paper_url = f"{SEMANTIC_SCHOLAR_URL}/{paper_id}"
+    fields = "title,year,externalIds,url,authors,referenceCount,citationCount"
+    paper = None
+    try:
+        response = await client.get(paper_url, params={"fields": fields})
+        if response.status_code != 404:
+            response.raise_for_status()
+            paper = response.json()
+    except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
+        pass
+
+    list_fields = "title,year,externalIds,url,authors"
+    async def get_list(endpoint: str, item_key: str) -> tuple[list[dict], int]:
+        try:
+            response = await client.get(
+                f"{paper_url}/{endpoint}",
+                params={"offset": 0, "limit": 100 if endpoint == "references" else 20, "fields": list_fields},
+            )
+            if response.status_code == 404:
+                return [], 0
+            response.raise_for_status()
+            payload = response.json()
+            items = [row.get(item_key) or {} for row in payload.get("data", [])]
+            return [item for item in items if item], int(payload.get("total") or len(items))
+        except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
+            return [], 0
+
+    references_raw, reference_total = await get_list("references", "citedPaper")
+    citing_raw, citation_total = await get_list("citations", "citingPaper")
+    references = [
+        _semantic_scholar_work_to_reference(item, index)
+        for index, item in enumerate(references_raw, 1)
+    ]
+    citing = [
+        _semantic_scholar_work_to_reference(item, index)
+        for index, item in enumerate(citing_raw, 1)
+    ]
+    return {
+        "references": references,
+        "citing": citing,
+        "reference_count": max(reference_total, int((paper or {}).get("referenceCount") or 0)),
+        "citation_count": max(citation_total, int((paper or {}).get("citationCount") or 0)),
+    }
+
+
+def _merge_references(*groups: list[Reference], limit: int) -> tuple[list[Reference], int]:
+    merged: list[Reference] = []
+    key_to_index: dict[str, int] = {}
+    total_seen = 0
+    for group in groups:
+        total_seen = max(total_seen, len(group))
+        for reference in group:
+            keys: list[str] = []
+            if reference.doi:
+                keys.append("doi:" + normalize_doi(reference.doi).casefold())
+            if reference.title:
+                keys.append("title:" + _normalize(reference.title))
+            if not keys:
+                keys.append("text:" + _normalize(reference.original_text))
+            existing_index = next((key_to_index[key] for key in keys if key in key_to_index), None)
+            if existing_index is not None:
+                old = merged[existing_index]
+                merged[existing_index] = Reference(
+                    original_text=old.original_text if len(old.original_text) >= len(reference.original_text) else reference.original_text,
+                    title=old.title or reference.title,
+                    year=old.year or reference.year,
+                    number=old.number,
+                    doi=old.doi or reference.doi,
+                )
+                for key in keys:
+                    key_to_index.setdefault(key, existing_index)
+                continue
+            index = len(merged)
+            merged.append(reference)
+            for key in keys:
+                key_to_index[key] = index
+            if len(merged) >= limit:
+                return merged, total_seen
+    return merged, total_seen
+
+
+async def lookup_doi_relationships(value: str) -> dict:
+    """Fetch the DOI paper's bibliography and a bounded list of citing works."""
+    doi = validate_doi(value)
+    timeout = httpx.Timeout(REQUEST_TIMEOUT_SECONDS, connect=4.0)
+    async with httpx.AsyncClient(
+        timeout=timeout,
+        headers=_headers(),
+        follow_redirects=True,
+        limits=httpx.Limits(max_connections=12),
+    ) as client:
+        async def safe_crossref() -> dict:
+            try:
+                item = await _crossref_by_doi(client, doi)
+                raw_refs = (item or {}).get("reference") or []
+                refs = [_crossref_reference_to_reference(raw, index) for index, raw in enumerate(raw_refs[:100], 1)]
+                return {"references": refs, "reference_count": len(raw_refs), "citation_count": 0}
+            except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
+                return {"references": [], "reference_count": 0, "citation_count": 0}
+
+        crossref_data, openalex_data, semantic_data = await asyncio.gather(
+            safe_crossref(),
+            _openalex_relationships(client, doi),
+            _semantic_scholar_relationships(client, doi),
+            return_exceptions=True,
+        )
+    if isinstance(openalex_data, BaseException):
+        openalex_data = {"references": [], "citing": [], "reference_count": 0, "citation_count": 0}
+    if isinstance(semantic_data, BaseException):
+        semantic_data = {"references": [], "citing": [], "reference_count": 0, "citation_count": 0}
+
+    references, _ = _merge_references(
+        crossref_data.get("references", []),
+        openalex_data.get("references", []),
+        semantic_data.get("references", []),
+        limit=100,
+    )
+    citing, _ = _merge_references(
+        openalex_data.get("citing", []),
+        semantic_data.get("citing", []),
+        limit=20,
+    )
+    reference_count = max(
+        len(references),
+        int(crossref_data.get("reference_count") or 0),
+        int(openalex_data.get("reference_count") or 0),
+        int(semantic_data.get("reference_count") or 0),
+    )
+    citation_count = max(
+        len(citing),
+        int(openalex_data.get("citation_count") or 0),
+        int(semantic_data.get("citation_count") or 0),
+    )
+    resolved_references, resolved_citing = await asyncio.gather(
+        resolve_references(references),
+        resolve_references(citing),
+    )
+    for index, item in enumerate(resolved_references, 1):
+        item["reference_number"] = index
+        item["citation_mentions"] = 0
+    for index, item in enumerate(resolved_citing, 1):
+        item["reference_number"] = index
+        item["citation_mentions"] = 0
+    return {
+        "references": resolved_references,
+        "citing_papers": resolved_citing,
+        "reference_count": reference_count,
+        "references_truncated": reference_count > len(resolved_references),
+        "citation_count": citation_count,
+        "citations_truncated": citation_count > len(resolved_citing),
+        "relationship_sources": [
+            name for name, count in (
+                ("Crossref", crossref_data.get("reference_count", 0)),
+                ("OpenAlex", openalex_data.get("reference_count", 0)),
+                ("Semantic Scholar", semantic_data.get("reference_count", 0)),
+            ) if count
+        ],
     }

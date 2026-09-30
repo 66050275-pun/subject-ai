@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import httpx
@@ -10,7 +11,12 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from extractor import ExtractionError, extract_citation_counts, extract_references, extract_summary_text
-from resolver import fetch_doi_summary_material, lookup_doi, resolve_references
+from resolver import (
+    fetch_doi_summary_material,
+    lookup_doi,
+    lookup_doi_relationships,
+    resolve_references,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
@@ -20,7 +26,7 @@ OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions"
 app = FastAPI(
     title="PaperRef Finder",
     description="Extract research references from PDFs and find their paper links.",
-    version="1.1.0",
+    version="1.2.0",
 )
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
@@ -87,20 +93,28 @@ async def find_references(file: UploadFile = File(...)) -> dict:
 
 @app.post("/api/doi")
 async def find_by_doi(doi: str = Form(...)) -> dict:
-    """Resolve one paper from a DOI using public scholarly metadata sources."""
+    """Resolve a DOI, its bibliography, and papers that cite it."""
     try:
-        result = await lookup_doi(doi)
+        result, relationships = await asyncio.gather(
+            lookup_doi(doi), lookup_doi_relationships(doi)
+        )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     title = result.get("matched_title") or result.get("doi") or "DOI"
     return {
+        "mode": "doi",
         "filename": title,
-        "total_references": 1,
-        "direct_links": int(bool(result.get("paper_url"))),
-        "citation_links_available": False,
-        "citation_link_count": 0,
-        "cited_reference_count": 0,
-        "results": [result],
+        "source_paper": result,
+        "total_references": relationships["reference_count"],
+        "direct_links": sum(bool(item.get("paper_url")) for item in relationships["references"]),
+        "citation_links_available": bool(relationships["citation_count"] or relationships["citing_papers"]),
+        "citation_link_count": relationships["citation_count"],
+        "cited_reference_count": len(relationships["citing_papers"]),
+        "references_truncated": relationships["references_truncated"],
+        "citations_truncated": relationships["citations_truncated"],
+        "relationship_sources": relationships["relationship_sources"],
+        "results": relationships["references"],
+        "citing_papers": relationships["citing_papers"],
     }
 
 
