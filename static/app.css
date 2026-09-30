@@ -1607,3 +1607,7 @@ label:has(>#search-input)>svg {
 @keyframes operation-loading {from{transform:translateX(-110%)}to{transform:translateX(440%)}}
 @media(max-width:480px){.operation-caption{flex-direction:column;gap:2px}}
 @media(prefers-reduced-motion:reduce){.operation-progress.is-indeterminate .operation-fill {animation:none;width:100%;opacity:.45}.operation-fill{transition:none}}
+
+/* Settings belongs to the workspace navigation on every screen size. */
+.sidebar-settings {width:100%;border:0;background:transparent;text-align:left;font-family:inherit;color:var(--ink)}
+@media(max-width:850px){.sidebar-settings{width:auto}}
