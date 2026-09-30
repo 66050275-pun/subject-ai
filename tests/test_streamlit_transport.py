@@ -19,10 +19,14 @@ class TransportTests(unittest.TestCase):
     def test_shared_template_and_assets_are_exact(self):
         root = Path(__file__).resolve().parents[1]
         page = frontend_html()
-        expected = (root / 'static/index.html').read_text().replace(
-            '<link rel="stylesheet" href="/static/app.css">', '<style>' + (root / 'static/app.css').read_text() + '</style>').replace(
-            '<script src="/static/graph.js"></script>', '<script>' + (root / 'static/graph.js').read_text() + '</script>').replace(
-            'class="brand" href="/"', 'class="brand" href="#paper-input"')
+        expected = (root / 'static/index.html').read_text()
+        for name in ('utilities.css', 'app.css'):
+            expected = expected.replace('<link rel="stylesheet" href="/static/' + name + '">', '<style>' + (root / 'static' / name).read_text() + '</style>')
+        for name in ('settings.js', 'graph.js'):
+            expected = expected.replace('<script src="/static/' + name + '"></script>', '<script>' + (root / 'static' / name).read_text() + '</script>')
+        expected = expected.replace('class="brand" href="/"', 'class="brand" href="#paper-input"')
+        import re
+        page = re.sub(r'<meta http-equiv="Content-Security-Policy"[^>]*><meta name="referrer" content="no-referrer">', '', page, count=1)
         self.assertEqual(page, expected)
 
     def test_only_supported_local_api_routes(self):

@@ -9,6 +9,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from web_security import SecurityHeaders
 from extractor import ExtractionError, extract_citation_counts, extract_citation_contexts, extract_references
 from ai_features import router as ai_router
 from oa_features import router as oa_router
@@ -27,6 +28,7 @@ app = FastAPI(
     description="Extract research references from PDFs and find their paper links.",
     version="2.0.0",
 )
+app.add_middleware(SecurityHeaders)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(ai_router)
 app.include_router(oa_router)

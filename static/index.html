@@ -4,7 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f4f6f2"><meta name="description" content="สำรวจงานวิจัย ค้นหาอ้างอิง และสังเคราะห์ความรู้ด้วย AI">
   <title>PaperRef Finder — Your research, connected.</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/utilities.css">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/app.css">
@@ -22,7 +22,7 @@
     <div class="sidebar-bottom"><span class="status-dot"></span> Open knowledge. Connected.<p>Crossref · OpenAlex<br>Semantic Scholar</p></div>
   </aside>
   <div class="app-shell">
-    <header class="topbar"><span>Research workspace <span class="topbar-slash">/</span> <b>PaperRef Finder</b></span><a href="#ai-settings" class="settings-link">✦ ตั้งค่า AI</a></header>
+    <header class="topbar"><span>Research workspace <span class="topbar-slash">/</span> <b>PaperRef Finder</b></span><button type="button" class="settings-link" data-open-settings="ai" aria-haspopup="dialog" aria-controls="settings-drawer" aria-expanded="false"><span aria-hidden="true">⚙</span> ตั้งค่า</button></header>
     <main>
       <section class="hero">
         <div class="hero-copy"><div class="eyebrow"><span class="status-dot"></span> FROM ONE PAPER TO A WORLD OF IDEAS</div><h1>งานวิจัยหนึ่งชิ้น<br><span>เปิดโลกได้อีกไกล.</span></h1><p>รวบรวมอ้างอิง หาเปเปอร์ที่อ่านได้ แล้วเชื่อมไอเดียเข้าด้วยกัน<br class="desktop-break"> ให้เวลากับการค้นพบ มากกว่าการตามหาลิงก์</p><div class="hero-tags"><span>Open access</span><span>Interactive graph</span><span>Your own AI</span></div></div>
@@ -35,7 +35,7 @@
             <input id="file-input" type="file" accept=".pdf,application/pdf" class="sr-only">
             <div id="dropzone" role="button" tabindex="0" aria-describedby="upload-hint"><span class="upload-icon">↑</span><h3>วางเปเปอร์ของคุณตรงนี้</h3><p>ลาก PDF มาวาง หรือ <b>เลือกจากอุปกรณ์</b></p><span id="upload-hint">รองรับ PDF ที่มีข้อความ · สูงสุด 50 MB</span></div>
             <div id="file-row" class="file-row hidden"><span id="file-name"></span><button id="remove-file" type="button">เปลี่ยนไฟล์ →</button></div>
-            <div class="extraction-methods"><div class="method-card"><span class="method-label">⌘ CODE EXTRACTION</span><h4>สกัดด้วยโค้ด</h4><p>อ่านบรรณานุกรมอัตโนมัติ<br>เริ่มได้ทันที ไม่ใช้ AI key</p><button id="analyze-button" type="button" disabled class="primary-button"><span id="button-spinner" class="spin hidden" aria-hidden="true">◌</span><span id="button-label">สกัดด้วยโค้ด →</span></button></div><div class="method-card ai-method"><span class="method-label">✦ AI EXTRACTION</span><h4>สกัดด้วย AI</h4><p>ตัวเลือกสำหรับรูปแบบซับซ้อน<br>ใช้ API key และแสดงผลแยกชุด<br>ไฟล์ยาวจะแบ่งเป็นหลายคำขอ</p><button data-ai="extract-references" type="button" class="violet-button">สกัดด้วย AI →</button><a href="#ai-settings" class="method-settings">ตั้งค่า API key ↓</a></div></div>
+            <div class="extraction-methods"><div class="method-card"><span class="method-label">⌘ CODE EXTRACTION</span><h4>สกัดด้วยโค้ด</h4><p>อ่านบรรณานุกรมอัตโนมัติ<br>เริ่มได้ทันที ไม่ใช้ AI key</p><button id="analyze-button" type="button" disabled class="primary-button"><span id="button-spinner" class="spin hidden" aria-hidden="true">◌</span><span id="button-label">สกัดด้วยโค้ด →</span></button></div><div class="method-card ai-method"><span class="method-label">✦ AI EXTRACTION</span><h4>สกัดด้วย AI</h4><p>ตัวเลือกสำหรับรูปแบบซับซ้อน<br>ใช้ API key และแสดงผลแยกชุด<br>ไฟล์ยาวจะแบ่งเป็นหลายคำขอ</p><button data-ai="extract-references" type="button" class="violet-button">สกัดด้วย AI →</button><a href="#ai-settings" class="method-settings">ตั้งค่า API key ⚙</a></div></div>
             <div id="loading-track" class="loading-track hidden"><div class="indeterminate"></div></div><div id="extraction-output" role="status" class="output-block"></div>
           </div>
           <div class="panel doi-panel"><div class="panel-heading"><span class="icon-tile violet">→</span><div><h3>มี DOI อยู่แล้ว?</h3><p>ตามหาเครือข่ายของเปเปอร์ได้เลย</p></div></div><div class="doi-symbol" aria-hidden="true">doi<span>→</span></div><label for="doi-input">DOI หรือ DOI URL</label><input id="doi-input" type="text" inputmode="url" placeholder="10.xxxx/… หรือ https://doi.org/…"><button id="doi-button" class="dark-button" type="button">ค้นหาด้วย DOI →</button><div class="doi-caption"><span>→</span><p>ดูงานที่เปเปอร์นี้อ้างถึง และงานที่อ้างถึงเปเปอร์นี้ จากฐานข้อมูลวิชาการเปิด</p></div></div>
@@ -159,11 +159,29 @@
 
       <section id="ai-workspace" class="workspace-section ai-workspace">
         <div class="section-heading"><div><div class="section-kicker">03 / AI RESEARCH LAB</div><h2>เปลี่ยนข้อมูล ให้เป็นไอเดีย <span class="sparkle">✦</span></h2></div><a href="#ai-settings" class="pill-link">ใช้ AI ของคุณเอง →</a></div>
-        <details id="ai-settings" class="panel settings-panel"><summary><span><span class="icon-tile violet">⚙</span> เชื่อมต่อ AI ของคุณ</span><span class="small-label">Provider · Model · API key ＋</span></summary><div class="settings-content">        <label class="mt-4 block text-sm">Provider <select id="ai-provider" class="rounded-lg border p-2"><option value="openai">OpenAI</option><option value="gemini">Google Gemini</option><option value="claude">Anthropic Claude</option><option value="maxplus">MaxPlus AI (OpenAI-compatible)</option></select></label>
+
+        <p id="selection-count" class="selection-banner">เลือกเปเปอร์บนการ์ดรายการอ้างอิง 0/5 รายการ</p>
+        <div id="ai-tools" class="tool-grid">
+          <button id="summary-button" type="button" class="tool-card"><span class="tool-icon">≋</span><span><b id="summary-button-label">สรุปงานวิจัย</b><small>เป้าหมาย วิธีการ ผลลัพธ์ และข้อจำกัด</small></span><span id="summary-spinner" class="spin hidden">◌</span><span class="tool-arrow">→</span></button>
+          <button data-ai="intents" type="button" class="tool-card"><span class="tool-icon">⌁</span><span><b>อ่านบริบท citation</b><small>ดูว่าแต่ละงานถูกอ้างถึงเพื่ออะไร</small></span><span class="tool-arrow">→</span></button>
+          <button data-ai="synthesis" type="button" class="tool-card"><span class="tool-icon">⊞</span><span><b>สังเคราะห์วรรณกรรม</b><small>เลือก 3–5 เปเปอร์ แล้วสำรวจ research gap</small></span><span class="tool-arrow">→</span></button>
+          <button data-ai="clusters" type="button" class="tool-card"><span class="tool-icon">◎</span><span><b>จัดกลุ่มธีมบนกราฟ</b><small>มองเครือข่ายผ่านสีและหัวข้อย่อย</small></span><span class="tool-arrow">→</span></button>
+        </div><div id="summary-output" role="status" class="output-block hidden"></div><div id="ai-output" role="status" class="output-block"></div>
+        <section class="panel chat-panel"><div class="panel-heading"><span class="icon-tile violet">✦</span><div><h3>คุยกับงานวิจัยของคุณ</h3><p>ถามจากเนื้อหาต้นทาง และ metadata ของ references ที่เลือก</p></div><span class="chat-label">PAPER Q&A</span></div><div id="chat-empty" class="chat-empty"><span>“</span><p>อะไรคือข้อจำกัดของงานนี้?<br>วิธีการต่างจากเปเปอร์ที่อ้างถึงอย่างไร?</p></div><div id="chat-log" role="log" class="chat-log"></div><form id="qa-form"><input id="qa-question" aria-label="คำถามงานวิจัย" maxlength="2000" required placeholder="ถามเกี่ยวกับงานวิจัยนี้…"><button type="submit" aria-label="ส่งคำถาม">↑</button></form><p class="chat-footnote">คำตอบใช้บริบทที่สกัดได้ เนื้อหายาวอาจถูกตัด และบางรายการอาจไม่มี abstract</p></section>
+      </section>
+      <footer><span>PaperRef Finder <b>→</b></span><p>Made for curious minds. · ตรวจสอบผลกับงานวิจัยต้นฉบับก่อนใช้อ้างอิง</p></footer>
+    </main>
+  </div>
+
+  <dialog id="settings-drawer" class="settings-drawer" aria-labelledby="settings-title">
+    <div class="drawer-heading"><div><span class="section-kicker">YOUR WORKSPACE / SETTINGS</span><h2 id="settings-title">พื้นที่ของคุณ <span>⚙</span></h2></div><button id="settings-close" type="button" aria-label="ปิดการตั้งค่า">×</button></div>
+    <div class="drawer-scroll">
+      <nav class="drawer-tabs" aria-label="หมวดการตั้งค่า"><button type="button" data-settings-section="ai" aria-pressed="true">✦ เชื่อมต่อ AI</button><button type="button" data-settings-section="workspace" aria-pressed="false">▤ พื้นที่ทำงาน</button><button type="button" data-settings-section="privacy" aria-pressed="false">◇ ความเป็นส่วนตัว</button></nav>
+      <section id="settings-ai" class="drawer-section"><div class="drawer-intro"><h3>AI ของคุณ ทางเลือกของคุณ</h3><p>เลือกบริการและโมเดลที่ต้องการ ค่าใช้งานคิดกับบัญชีของคุณเมื่อกดใช้ฟีเจอร์ AI</p></div><details id="ai-settings" open class="settings-panel"><summary><span><span class="icon-tile violet">⚙</span> เชื่อมต่อ AI ของคุณ</span><span class="small-label">Provider · Model · API key ＋</span></summary><div class="settings-content">        <label class="mt-4 block text-sm">Provider <select id="ai-provider" class="rounded-lg border p-2"><option value="openai">OpenAI</option><option value="gemini">Google Gemini</option><option value="claude">Anthropic Claude</option><option value="maxplus">MaxPlus AI (OpenAI-compatible)</option></select></label>
         <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_13rem]">
           <label class="block text-sm font-medium text-slate-700">API key
             <input id="openai-key" type="password" autocomplete="off" spellcheck="false" placeholder="API key ของค่ายที่เลือก (ไม่ต้องใส่เครื่องหมายคำพูด)" class="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
-          </label>
+          <button id="toggle-key" class="key-toggle" type="button" aria-pressed="false">แสดงคีย์</button></label>
           <label class="block text-sm font-medium text-slate-700">โมเดล
             <input id="summary-model" list="gemini-model-list" type="text" value="gpt-4o-mini" autocomplete="off" class="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
           </label>
@@ -183,23 +201,18 @@
         </label>
         <button id="gemini-check" type="button" class="mt-3 hidden rounded-lg border border-indigo-200 bg-white px-4 py-2 text-sm text-indigo-700">ตรวจคีย์และโหลดโมเดล Gemini</button>
         <p id="gemini-check-result" role="status" class="mt-2 text-sm text-slate-600"></p>
-<div class="settings-footer"><p>ข้อความและ metadata จะส่งไปยังบริการที่เลือก ค่า API คิดกับบัญชีของคุณ คีย์อยู่เฉพาะหน้านี้และไม่บันทึกลง storage</p><button id="clear-key" type="button" class="text-button">ล้าง API key</button></div></div></details>
-        <p id="selection-count" class="selection-banner">เลือกเปเปอร์บนการ์ดรายการอ้างอิง 0/5 รายการ</p>
-        <div id="ai-tools" class="tool-grid">
-          <button id="summary-button" type="button" class="tool-card"><span class="tool-icon">≋</span><span><b id="summary-button-label">สรุปงานวิจัย</b><small>เป้าหมาย วิธีการ ผลลัพธ์ และข้อจำกัด</small></span><span id="summary-spinner" class="spin hidden">◌</span><span class="tool-arrow">→</span></button>
-          <button data-ai="intents" type="button" class="tool-card"><span class="tool-icon">⌁</span><span><b>อ่านบริบท citation</b><small>ดูว่าแต่ละงานถูกอ้างถึงเพื่ออะไร</small></span><span class="tool-arrow">→</span></button>
-          <button data-ai="synthesis" type="button" class="tool-card"><span class="tool-icon">⊞</span><span><b>สังเคราะห์วรรณกรรม</b><small>เลือก 3–5 เปเปอร์ แล้วสำรวจ research gap</small></span><span class="tool-arrow">→</span></button>
-          <button data-ai="clusters" type="button" class="tool-card"><span class="tool-icon">◎</span><span><b>จัดกลุ่มธีมบนกราฟ</b><small>มองเครือข่ายผ่านสีและหัวข้อย่อย</small></span><span class="tool-arrow">→</span></button>
-        </div><div id="summary-output" role="status" class="output-block hidden"></div><div id="ai-output" role="status" class="output-block"></div>
-        <section class="panel chat-panel"><div class="panel-heading"><span class="icon-tile violet">✦</span><div><h3>คุยกับงานวิจัยของคุณ</h3><p>ถามจากเนื้อหาต้นทาง และ metadata ของ references ที่เลือก</p></div><span class="chat-label">PAPER Q&A</span></div><div id="chat-empty" class="chat-empty"><span>“</span><p>อะไรคือข้อจำกัดของงานนี้?<br>วิธีการต่างจากเปเปอร์ที่อ้างถึงอย่างไร?</p></div><div id="chat-log" role="log" class="chat-log"></div><form id="qa-form"><input id="qa-question" aria-label="คำถามงานวิจัย" maxlength="2000" required placeholder="ถามเกี่ยวกับงานวิจัยนี้…"><button type="submit" aria-label="ส่งคำถาม">↑</button></form><p class="chat-footnote">คำตอบใช้บริบทที่สกัดได้ เนื้อหายาวอาจถูกตัด และบางรายการอาจไม่มี abstract</p></section>
+<div class="settings-footer"><p>ข้อความและ metadata จะส่งไปยังบริการที่เลือก ค่า API คิดกับบัญชีของคุณ คีย์เก็บในหน่วยความจำหน้านี้ ผ่านเซิร์ฟเวอร์เพื่อเรียกบริการ และไม่บันทึกในคุกกี้หรือ storage</p><button id="clear-key" type="button" class="text-button">ล้าง API key</button></div></div></details>
+        <div class="preference-card"><label><input id="remember-ai-preferences" type="checkbox"> จำ provider และโมเดลบนอุปกรณ์นี้</label><p>เป็นตัวเลือก ใช้ local storage เก็บเฉพาะการตั้งค่า ไม่เก็บ API key, PDF หรือบทสนทนา ปิดเพื่อถอนความยินยอมและลบค่าที่จำไว้</p><p id="preferences-status" role="status"></p></div>
       </section>
-      <footer><span>PaperRef Finder <b>→</b></span><p>Made for curious minds. · ตรวจสอบผลกับงานวิจัยต้นฉบับก่อนใช้อ้างอิง</p></footer>
-    </main>
-  </div>
+      <section id="settings-workspace" class="drawer-section hidden"><div class="drawer-intro"><h3>ไปยังสิ่งที่ต้องการ</h3><p>เครื่องมือทั้งหมดในพื้นที่เดียว</p></div><div class="drawer-shortcuts"><button type="button" data-jump="paper-input">↑ PDF และ DOI <span>เลือกงานวิจัย · สกัดด้วยโค้ดหรือ AI →</span></button><button type="button" data-jump="results-section">▤ รายการอ้างอิงและกราฟ <span>ค้นหา PDF · กรองผล · ดาวน์โหลดรายการ →</span></button><button type="button" data-jump="ai-workspace">✦ AI Research Lab <span>สรุป · วิเคราะห์ citation · สังเคราะห์ · Q&A →</span></button></div><div class="privacy-card"><h4>ใช้บนอุปกรณ์ร่วมกัน</h4><p>ล้าง API key และดาวน์โหลดผลก่อนปิดแท็บ การรีเฟรชหน้าอาจทำให้ไฟล์ ผลค้นหา และแช็ตหาย</p><button type="button" data-clear-key class="text-button">ล้าง API key ตอนนี้</button><p id="key-clear-status" role="status"></p></div></section>
+      <section id="settings-privacy" class="drawer-section hidden"><div class="drawer-intro"><h3>ข้อมูลไปที่ไหนบ้าง?</h3><p>เลือกใช้แต่ละฟีเจอร์ได้ โดยไม่ต้องเปิดการจำค่าตั้งต้น</p></div><div class="privacy-card"><h4>PDF และการค้นหา</h4><p>PDF ผ่านเซิร์ฟเวอร์เพื่อสกัดข้อความ การค้นอ้างอิงส่ง DOI ชื่อเรื่อง หรือ metadata ไปยังฐานข้อมูลวิชาการที่ใช้ ฟีเจอร์ AI ส่งบริบทที่จำเป็นและคีย์ผ่านเซิร์ฟเวอร์ไปยัง provider ที่เลือก</p></div><div class="privacy-card"><h4>API key และผลการทำงาน</h4><p>แอปไม่บันทึกคีย์ PDF หรือแช็ตลง storage ของเบราว์เซอร์หรือไฟล์ถาวรของแอป ข้อมูลคำขออยู่ในหน่วยความจำระหว่างประมวลผล นโยบายเก็บข้อมูลของผู้ให้บริการ AI และผู้ให้บริการโฮสต์อาจแตกต่างกัน</p></div><div class="privacy-card"><h4>คุกกี้และบริการภายนอก</h4><p>แอปไม่ตั้งคุกกี้โฆษณาหรือติดตาม Streamlit อาจใช้คุกกี้ที่จำเป็นสำหรับความปลอดภัยและการเชื่อมต่อ ฟอนต์โหลดจาก Google Fonts และลิงก์บทความเปิดเว็บไซต์ภายนอกซึ่งมีนโยบายของตนเอง</p><p>การจำ provider/โมเดลเป็นตัวเลือกที่ปิดไว้ก่อน และถอนโดยปิดสวิตช์ในหมวดเชื่อมต่อ AI ได้ทุกเมื่อ</p></div><div class="privacy-card"><h4>ก่อนส่งข้อมูล</h4><p>เลือก provider ที่คุณยอมรับนโยบายข้อมูล และหลีกเลี่ยงการส่งเอกสารที่มีข้อมูลส่วนบุคคลหรือข้อมูลที่คุณไม่มีสิทธิ์แชร์</p></div></section>
+    </div><div class="drawer-foot"><span class="status-dot"></span> Your keys. Your choices.</div>
+  </dialog>
+  <script src="/static/settings.js"></script>
   <script src="/static/graph.js"></script>
   <script>
     (() => {
-      for (const link of document.querySelectorAll('a[href="#ai-settings"]')) link.addEventListener('click', () => { document.getElementById('ai-settings').open = true; });
+
       const MAX_BYTES = 50 * 1024 * 1024;
       const fileInput = document.getElementById('file-input');
       const dropzone = document.getElementById('dropzone');
@@ -521,7 +534,7 @@
       async function callAI(feature, extra = {}) {
         if (oaController) throw new Error('รอการค้นหา PDF ปัจจุบันเสร็จก่อน');
         const key = document.getElementById('openai-key').value.trim();
-        if (!key) { const settings = document.getElementById('ai-settings'); settings.open = true; settings.scrollIntoView({behavior: 'smooth', block: 'center'}); throw new Error('กรุณาเชื่อมต่อ AI และกรอก API key ของค่ายที่เลือกก่อน'); }
+        if (!key) { window.PaperRefSettings.open('ai'); throw new Error('กรุณาเชื่อมต่อ AI และกรอก API key ของค่ายที่เลือกก่อน'); }
         if (providerSelect.value === 'maxplus' && !document.getElementById('summary-model').value.trim()) throw new Error('เลือกหรือกรอกชื่อโมเดล MaxPlus ก่อน');
         if (aiBusy) throw new Error('รอคำขอ AI ปัจจุบันเสร็จก่อน');
         const requestVersion = sourceVersion; const requestDataset = activeDataset;
@@ -621,7 +634,12 @@
       };
 
       function makeLink(label, url, style) {
-        const link = document.createElement('a'); link.href = url; link.target = '_blank';
+        let target;
+        try { target = new URL(url); } catch (_) { target = null; }
+        if (!target || !['https:', 'http:'].includes(target.protocol) || target.username || target.password) {
+          const disabled = document.createElement('span'); disabled.textContent = label + ' (ลิงก์ไม่ปลอดภัย)'; return disabled;
+        }
+        const link = document.createElement('a'); link.href = target.href; link.target = '_blank';
         link.rel = 'noopener noreferrer'; link.textContent = label;
         link.className = 'inline-flex items-center rounded-lg px-3 py-2 text-xs font-semibold transition ' + style;
         return link;
