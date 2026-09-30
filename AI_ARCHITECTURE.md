@@ -77,3 +77,13 @@ Select `maxplus` in the provider picker, enter a MaxPlus key, set the base URL (
 - Generation requests `POST {base_url}/chat/completions` using Bearer authentication, `messages`, `model`, and legacy-compatible `max_tokens`. It reads `choices[0].message.content`. Structured tools request JSON through the prompt and retain server-side schema validation; the adapter does not require the relay to implement `response_format`.
 - Source excerpts go to MaxPlus when this provider is selected. Keys remain transient and billing belongs to the MaxPlus account. This adapter assumes OpenAI compatibility; documentation and live behavior could not be verified because the execution environment blocks this domain.
 - Mocked checks passed for URL boundaries, authentication and request construction, model listing, JSON decoding and endpoint validation. No actual provider keys or paid calls were used.
+
+## Frontend workspace and extraction provenance
+
+The redesigned interface has an import workspace, reference library and AI Research Lab. PDF import offers two distinct actions: **สกัดด้วยโค้ด** (no AI credentials) and **สกัดด้วย AI** (explicit paid provider request). DOI lookup remains its own source.
+
+Code, AI and DOI results are kept as separate browser-memory datasets. Each dataset has its own count, selected references, theme colors, analysis output and Q&A history. Switching datasets changes the cards, graph, filters and exports to that dataset. AI extraction never overwrites code extraction. Cards and exported records carry `extraction_source`; filenames include `code`, `ai` or `doi`. A new PDF or successful DOI search resets the previous paper's datasets. Failed extraction leaves successful datasets available. Reloading the page clears these temporary results.
+
+`static/app.css` supplies the new desktop/mobile layout, visible focus states and reduced-motion behavior. The reference graph is in an expandable panel so long graphs do not push the list down by default. The page remains styled when external utility/font CDNs are unavailable.
+
+Chromium checks used mocked responses, covering separate counts and selections, exports, failure preservation, new-paper reset, DOI switching, all AI UI actions, graph zoom and mobile overflow. No real AI calls were made for this redesign.

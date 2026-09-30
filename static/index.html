@@ -1,130 +1,54 @@
 <!doctype html>
 <html lang="th">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f8fafc">
-  <meta name="description" content="ค้นหา DOI และ PDF สำหรับรายการอ้างอิงในงานวิจัยของคุณ">
-  <title>PaperRef Finder — ค้นหาลิงก์งานวิจัย</title>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f6f2"><meta name="description" content="สำรวจงานวิจัย ค้นหาอ้างอิง และสังเคราะห์ความรู้ด้วย AI">
+  <title>PaperRef Finder — Your research, connected.</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root { color-scheme: light; font-family: "DM Sans", "Noto Sans Thai", sans-serif; }
-    body { min-height: 100vh; background: #f8fafc; }
-    .drop-active { border-color: #0f766e !important; background: #f0fdfa !important; }
-    .spin { animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .indeterminate { animation: loading 1.4s ease-in-out infinite; }
-    @keyframes loading { 0% { transform: translateX(-110%); } 100% { transform: translateX(330%); } }
-    .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-  </style>
+  <link rel="stylesheet" href="/static/app.css">
 </head>
-<body class="text-slate-800 antialiased">
-  <header class="border-b border-slate-200/80 bg-white">
-    <div class="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
-      <a href="/" class="flex items-center gap-3" aria-label="PaperRef Finder หน้าแรก">
-        <span class="grid h-10 w-10 place-items-center rounded-xl bg-teal-700 text-white shadow-sm">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" class="h-6 w-6"><path d="M7 3.75h7l4 4v12.5H7a2 2 0 0 1-2-2v-13a1.5 1.5 0 0 1 2-1.5Z" stroke="currentColor" stroke-width="1.7"/><path d="M14 4v4h4M8.5 12h7M8.5 15.5h7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-        </span>
-        <span class="text-lg font-bold tracking-tight text-slate-900">PaperRef <span class="text-teal-700">Finder</span></span>
-      </a>
-      <span class="hidden rounded-full border border-teal-100 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-800 sm:inline-flex">Academic link finder</span>
-    </div>
-  </header>
-
-  <main class="mx-auto max-w-6xl px-5 pb-20 pt-12 sm:px-8 sm:pt-16">
-    <section class="mx-auto max-w-3xl text-center">
-      <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-800 ring-1 ring-inset ring-teal-100">
-        <span class="h-1.5 w-1.5 rounded-full bg-teal-600"></span> Crossref · OpenAlex · Semantic Scholar
+<body>
+  <a class="skip-link" href="#paper-input">ข้ามไปเลือกงานวิจัย</a>
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="PaperRef Finder หน้าแรก"><span class="brand-mark">p<span>→</span></span><span>PaperRef<span class="brand-sub">FINDER / RESEARCH STUDIO</span></span></a>
+    <div class="sidebar-caption">YOUR WORKSPACE</div>
+    <nav aria-label="เมนูหลัก">
+      <a class="nav-item" href="#paper-input"><span>→</span> เริ่มสำรวจ <span class="nav-number">01</span></a>
+      <a class="nav-item" href="#results-section"><span>▤</span> รายการอ้างอิง <span class="nav-number">02</span></a>
+      <a class="nav-item" href="#ai-workspace"><span>✦</span> AI Research Lab <span class="nav-number">03</span></a>
+    </nav>
+    <div class="sidebar-bottom"><span class="status-dot"></span> Open knowledge. Connected.<p>Crossref · OpenAlex<br>Semantic Scholar</p></div>
+  </aside>
+  <div class="app-shell">
+    <header class="topbar"><span>Research workspace <span class="topbar-slash">/</span> <b>PaperRef Finder</b></span><a href="#ai-settings" class="settings-link">✦ ตั้งค่า AI</a></header>
+    <main>
+      <section class="hero">
+        <div class="hero-copy"><div class="eyebrow"><span class="status-dot"></span> FROM ONE PAPER TO A WORLD OF IDEAS</div><h1>งานวิจัยหนึ่งชิ้น<br><span>เปิดโลกได้อีกไกล.</span></h1><p>รวบรวมอ้างอิง หาเปเปอร์ที่อ่านได้ แล้วเชื่อมไอเดียเข้าด้วยกัน<br class="desktop-break"> ให้เวลากับการค้นพบ มากกว่าการตามหาลิงก์</p><div class="hero-tags"><span>Open access</span><span>Interactive graph</span><span>Your own AI</span></div></div>
+        <div class="hero-art" aria-hidden="true"><div class="art-label">THE BIGGER PICTURE →</div><svg viewBox="0 0 420 280"><g fill="none" stroke="#b6cbb9" stroke-width="1.5"><path d="M200 120 75 52M200 120 342 47M200 120 345 216M200 120 68 220M200 120 215 250M75 52 45 135M342 47 390 125M345 216 390 125M68 220 45 135"/></g><g fill="#c8ddb3"><circle cx="75" cy="52" r="19"/><circle cx="345" cy="216" r="21"/><circle cx="45" cy="135" r="9"/><circle cx="215" cy="250" r="9"/></g><g fill="#c9bbed"><circle cx="342" cy="47" r="17"/><circle cx="68" cy="220" r="17"/><circle cx="390" cy="125" r="9"/></g><rect x="119" y="81" width="164" height="83" rx="20" fill="#143d2d"/><text x="200" y="113" fill="#d7eead" font-size="12" text-anchor="middle" letter-spacing="2">YOUR PAPER</text><text x="200" y="140" fill="white" font-size="15" text-anchor="middle">Connected ideas</text></svg><span class="art-sticker">See the connections.</span></div>
+      </section>
+      <section id="paper-input" class="workspace-section">
+        <div class="section-heading"><div><div class="section-kicker">01 / START EXPLORING</div><h2>เริ่มจากงานวิจัยของคุณ</h2></div><span class="small-label">เลือก PDF หรือค้นหาด้วย DOI</span></div>
+        <div class="input-grid">
+          <div class="panel upload-panel"><div class="panel-heading"><span class="icon-tile mint">▤</span><div><h3>อัปโหลด PDF</h3><p>สกัดบรรณานุกรมได้สองวิธี</p></div><span class="small-label">MAX 50 MB</span></div>
+            <input id="file-input" type="file" accept=".pdf,application/pdf" class="sr-only">
+            <div id="dropzone" role="button" tabindex="0" aria-describedby="upload-hint"><span class="upload-icon">↑</span><h3>วางเปเปอร์ของคุณตรงนี้</h3><p>ลาก PDF มาวาง หรือ <b>เลือกจากอุปกรณ์</b></p><span id="upload-hint">รองรับ PDF ที่มีข้อความ · สูงสุด 50 MB</span></div>
+            <div id="file-row" class="file-row hidden"><span id="file-name"></span><button id="remove-file" type="button">เปลี่ยนไฟล์ →</button></div>
+            <div class="extraction-methods"><div class="method-card"><span class="method-label">⌘ CODE EXTRACTION</span><h4>สกัดด้วยโค้ด</h4><p>อ่านบรรณานุกรมอัตโนมัติ<br>เริ่มได้ทันที ไม่ใช้ AI key</p><button id="analyze-button" type="button" disabled class="primary-button"><span id="button-spinner" class="spin hidden" aria-hidden="true">◌</span><span id="button-label">สกัดด้วยโค้ด →</span></button></div><div class="method-card ai-method"><span class="method-label">✦ AI EXTRACTION</span><h4>สกัดด้วย AI</h4><p>ตัวเลือกสำหรับรูปแบบซับซ้อน<br>ใช้ API key และแสดงผลแยกชุด</p><button data-ai="extract-references" type="button" class="violet-button">สกัดด้วย AI →</button><a href="#ai-settings" class="method-settings">ตั้งค่า API key ↓</a></div></div>
+            <div id="loading-track" class="loading-track hidden"><div class="indeterminate"></div></div><div id="extraction-output" role="status" class="output-block"></div>
+          </div>
+          <div class="panel doi-panel"><div class="panel-heading"><span class="icon-tile violet">→</span><div><h3>มี DOI อยู่แล้ว?</h3><p>ตามหาเครือข่ายของเปเปอร์ได้เลย</p></div></div><div class="doi-symbol" aria-hidden="true">doi<span>→</span></div><label for="doi-input">DOI หรือ DOI URL</label><input id="doi-input" type="text" inputmode="url" placeholder="10.xxxx/… หรือ https://doi.org/…"><button id="doi-button" class="dark-button" type="button">ค้นหาด้วย DOI →</button><div class="doi-caption"><span>→</span><p>ดูงานที่เปเปอร์นี้อ้างถึง และงานที่อ้างถึงเปเปอร์นี้ จากฐานข้อมูลวิชาการเปิด</p></div></div>
+        </div><div id="alert" role="alert" class="hidden"></div>
+      </section>
+    <section id="results-section" class="workspace-section hidden" aria-label="ผลการค้นหา">
+      <div class="section-kicker">02 / YOUR RESEARCH LIBRARY</div>
+      <div id="dataset-tabs" class="dataset-tabs" role="group" aria-label="เลือกชุดผลลัพธ์">
+        <button id="dataset-code" type="button" data-dataset="code" disabled aria-pressed="false"><span>⌘ สกัดด้วยโค้ด</span><b id="dataset-code-count">—</b></button>
+        <button id="dataset-ai" type="button" data-dataset="ai" disabled aria-pressed="false"><span>✦ สกัดด้วย AI</span><b id="dataset-ai-count">—</b></button>
+        <button id="dataset-doi" type="button" data-dataset="doi" disabled aria-pressed="false"><span>→ จาก DOI</span><b id="dataset-doi-count">—</b></button>
       </div>
-      <h1 class="text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">ตามหาเปเปอร์ที่อ้างอิง<br class="hidden sm:block">ได้ในไม่กี่คลิก</h1>
-      <p class="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">อัปโหลด PDF เพื่อแยกรายการอ้างอิง หรือค้นหาเปเปอร์ด้วย DOI แล้วดูชื่อเรื่องและลิงก์ Open Access จากหลายแหล่ง</p>
-    </section>
-
-    <section class="mx-auto mt-10 max-w-3xl" aria-label="อัปโหลดงานวิจัย">
-      <div class="mb-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <label for="doi-input" class="block text-sm font-semibold text-slate-900">ค้นหางานวิจัยจาก DOI</label>
-        <p class="mt-1 text-sm text-slate-500">วาง DOI เช่น <span class="font-mono">10.1016/j.jpowsour.2024.234567</span> หรือ DOI URL</p>
-        <div class="mt-3 flex flex-col gap-2 sm:flex-row">
-          <input id="doi-input" type="text" inputmode="url" placeholder="10.xxxx/... หรือ https://doi.org/..." class="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100">
-          <button id="doi-button" type="button" class="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">ค้นหาด้วย DOI</button>
-        </div>
-      </div>
-      <input id="file-input" type="file" accept=".pdf,application/pdf" class="sr-only">
-      <div id="dropzone" role="button" tabindex="0" aria-describedby="upload-hint" class="group cursor-pointer rounded-2xl border-2 border-dashed border-slate-300 bg-white px-6 py-10 text-center shadow-sm transition hover:border-teal-600 hover:bg-teal-50/40 sm:px-12 sm:py-12">
-        <div class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-teal-50 text-teal-700 transition group-hover:bg-teal-100">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" class="h-7 w-7"><path d="M12 15V4m0 0L8 8m4-4 4 4M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </div>
-        <h2 class="mt-5 text-lg font-semibold text-slate-900">ลากไฟล์ PDF มาวางที่นี่</h2>
-        <p class="mt-1 text-sm text-slate-500">หรือ <span class="font-semibold text-teal-700">เลือกไฟล์จากอุปกรณ์</span></p>
-        <p id="upload-hint" class="mt-4 text-xs text-slate-400">รองรับไฟล์ PDF ขนาดสูงสุด 50 MB</p>
-      </div>
-      <div id="file-row" class="mt-3 hidden items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
-        <span id="file-name" class="truncate font-medium text-slate-700"></span>
-        <button id="remove-file" type="button" class="ml-4 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800">เปลี่ยนไฟล์</button>
-      </div>
-      <button id="analyze-button" type="button" disabled class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3.5 font-semibold text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none">
-        <svg id="button-spinner" aria-hidden="true" class="spin hidden h-5 w-5" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".25" stroke-width="3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
-        <span id="button-label">ค้นหารายการอ้างอิง</span>
-      </button>
-      <div id="loading-track" class="mt-3 hidden h-1 overflow-hidden rounded-full bg-teal-100"><div class="indeterminate h-full w-1/3 rounded-full bg-teal-600"></div></div>
-      <div id="alert" role="alert" class="mt-4 hidden rounded-xl border px-4 py-3 text-sm"></div>
-      <div class="mt-5 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-5 sm:p-6">
-        <div>
-          <h2 class="font-semibold text-slate-900">เครื่องมือ AI สำหรับงานวิจัย</h2>
-          <p class="mt-1 text-sm leading-6 text-slate-600">ใช้ PDF ที่เลือกไว้ หรือใช้ DOI ด้านบนถ้ายังไม่ได้เลือก PDF เลือกค่าย โมเดล และใส่ API key ของคุณเอง</p>
-        </div>
-        <label class="mt-4 block text-sm">Provider <select id="ai-provider" class="rounded-lg border p-2"><option value="openai">OpenAI</option><option value="gemini">Google Gemini</option><option value="claude">Anthropic Claude</option><option value="maxplus">MaxPlus AI (OpenAI-compatible)</option></select></label>
-        <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_13rem]">
-          <label class="block text-sm font-medium text-slate-700">API key
-            <input id="openai-key" type="password" autocomplete="off" spellcheck="false" placeholder="API key ของค่ายที่เลือก (ไม่ต้องใส่เครื่องหมายคำพูด)" class="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
-          </label>
-          <label class="block text-sm font-medium text-slate-700">โมเดล
-            <input id="summary-model" list="gemini-model-list" type="text" value="gpt-4o-mini" autocomplete="off" class="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
-          </label>
-        </div>
-        <section id="maxplus-settings" class="mt-3 hidden">
-          <label class="block text-sm text-slate-700">MaxPlus Base URL
-            <input id="maxplus-base-url" value="https://api.maxplus-ai.cc/v1" type="url" class="mt-1 w-full rounded-lg border p-2">
-          </label>
-          <p class="mt-2 text-xs text-slate-600">เมื่อเลือก MaxPlus ข้อความงานวิจัยจะส่งไปที่บริการนี้ ใช้ API key ของ MaxPlus และชื่อโมเดลตามที่ผู้ให้บริการระบุ</p>
-          <button id="maxplus-check" type="button" class="mt-2 rounded-lg border bg-white p-2 text-sm">ตรวจคีย์และโหลดโมเดล MaxPlus</button>
-          <select id="maxplus-model-picker" aria-label="โมเดล MaxPlus" class="mt-2 block w-full rounded-lg border p-2"><option value="">เลือกโมเดล…</option></select>
-          <p id="maxplus-check-result" role="status" class="mt-2 text-sm text-slate-600"></p>
-        </section>
-        <datalist id="gemini-model-list"></datalist>
-        <label id="gemini-model-picker-label" class="mt-3 hidden text-sm text-slate-700">เลือกจากรายการโมเดล Gemini ที่โหลดมา
-          <select id="gemini-model-picker" class="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-2"><option value="">เลือกโมเดล…</option></select>
-        </label>
-        <button id="gemini-check" type="button" class="mt-3 hidden rounded-lg border border-indigo-200 bg-white px-4 py-2 text-sm text-indigo-700">ตรวจคีย์และโหลดโมเดล Gemini</button>
-        <p id="gemini-check-result" role="status" class="mt-2 text-sm text-slate-600"></p>
-        <button id="summary-button" type="button" class="mt-3 inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-800 disabled:cursor-wait disabled:opacity-60">
-          <svg id="summary-spinner" aria-hidden="true" class="spin hidden h-4 w-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".25" stroke-width="3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
-          <span id="summary-button-label">สรุปงานวิจัย</span>
-        </button>
-        <p class="mt-3 text-xs leading-5 text-slate-500">เมื่อกดเครื่องมือ AI เนื้อหาและ metadata จะส่งไปยังค่ายที่เลือก ค่า API คิดกับบัญชีของคุณ คีย์อยู่เฉพาะในช่องกรอกหน้านี้ ไม่บันทึกในเซิร์ฟเวอร์หรือ browser storage</p>
-        <button id="clear-key" type="button" class="mt-2 text-sm text-slate-600">ล้าง API key</button>
-        <div class="mt-4 flex flex-wrap gap-2" id="ai-tools">
-          <button data-ai="intents" class="rounded-lg border bg-white p-2 text-sm">วิเคราะห์เจตนา citation</button>
-          <button data-ai="synthesis" class="rounded-lg border bg-white p-2 text-sm">สังเคราะห์ 3–5 เปเปอร์ที่เลือก</button>
-          <button data-ai="clusters" class="rounded-lg border bg-white p-2 text-sm">จัดกลุ่มธีมบนกราฟ</button>
-          <button data-ai="extract-references" class="rounded-lg border bg-white p-2 text-sm">สกัดบรรณานุกรมด้วย AI (PDF)</button>
-        </div>
-        <p id="selection-count" class="mt-2 text-xs text-slate-500">เลือกเปเปอร์บนการ์ดด้านล่าง 0/5 รายการ</p>
-        <div id="ai-output" role="status" class="mt-3 whitespace-pre-wrap text-sm leading-7"></div>
-        <div class="mt-4 border-t pt-4">
-          <h3 class="font-semibold">ถาม–ตอบงานวิจัย</h3>
-          <p class="text-xs text-slate-500">ใช้เนื้อหางานต้นทางและ metadata ของเปเปอร์ที่เลือก บางส่วนของเอกสารอาจถูกตัดเพื่อจำกัดบริบท</p>
-          <div id="chat-log" role="log" class="my-3 max-h-80 overflow-y-auto whitespace-pre-wrap text-sm leading-7"></div>
-          <form id="qa-form" class="flex gap-2"><input id="qa-question" aria-label="คำถามงานวิจัย" maxlength="2000" required class="w-full rounded-lg border p-2" placeholder="ถามเกี่ยวกับงานวิจัยนี้…"><button class="rounded-lg bg-indigo-700 px-4 text-white">ถาม</button></form>
-        </div>
-        <div id="summary-output" class="mt-4 hidden whitespace-pre-wrap rounded-xl border border-indigo-100 bg-white p-4 text-sm leading-7 text-slate-700"></div>
-      </div>
-    </section>
-
-    <section id="results-section" class="mt-14 hidden" aria-label="ผลการค้นหา">
+      <p id="dataset-note" class="dataset-note" role="status"></p>
       <div class="flex flex-col justify-between gap-5 border-b border-slate-200 pb-6 sm:flex-row sm:items-end">
         <div>
           <p class="text-sm font-medium text-teal-700">ผลการวิเคราะห์</p>
@@ -169,7 +93,7 @@
         </div>
       </div>
 
-      <section class="mt-8 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6" aria-labelledby="network-heading">
+      <details id="network-panel" class="network-panel"><summary><span>◎ เครือข่ายการอ้างอิง</span><span class="small-label">ลาก · ซูม · สำรวจ →</span></summary><section aria-labelledby="network-heading">
         <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
           <div>
             <h3 id="network-heading" class="font-semibold text-slate-900">เครือข่ายการอ้างอิง</h3>
@@ -192,7 +116,7 @@
           <svg id="citation-graph" class="mx-auto block w-full min-w-[680px] max-w-5xl touch-none select-none" viewBox="0 0 1240 900" role="group" aria-label="กราฟอ้างอิงแบบลากและซูมได้"></svg>
         </div>
         <p id="network-detail" class="text-center text-xs text-slate-500"></p>
-      </section>
+      </section></details>
 
       <div class="mt-8">
         <div class="flex flex-wrap gap-2" role="tablist" aria-label="เลือกมุมมองรายการ">
@@ -217,11 +141,49 @@
       <div id="empty-search" class="hidden rounded-xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center text-sm text-slate-500">ไม่พบรายการที่ตรงกับคำค้น</div>
     </section>
 
-    <footer class="mt-16 border-t border-slate-200 pt-6 text-center text-xs leading-5 text-slate-400">ผลการค้นหาอัตโนมัติอาจไม่ตรงทุกครั้ง โปรดตรวจสอบรายละเอียดกับแหล่งข้อมูลต้นฉบับ</footer>
-  </main>
 
+      <section id="ai-workspace" class="workspace-section ai-workspace">
+        <div class="section-heading"><div><div class="section-kicker">03 / AI RESEARCH LAB</div><h2>เปลี่ยนข้อมูล ให้เป็นไอเดีย <span class="sparkle">✦</span></h2></div><a href="#ai-settings" class="pill-link">ใช้ AI ของคุณเอง →</a></div>
+        <details id="ai-settings" class="panel settings-panel"><summary><span><span class="icon-tile violet">⚙</span> เชื่อมต่อ AI ของคุณ</span><span class="small-label">Provider · Model · API key ＋</span></summary><div class="settings-content">        <label class="mt-4 block text-sm">Provider <select id="ai-provider" class="rounded-lg border p-2"><option value="openai">OpenAI</option><option value="gemini">Google Gemini</option><option value="claude">Anthropic Claude</option><option value="maxplus">MaxPlus AI (OpenAI-compatible)</option></select></label>
+        <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_13rem]">
+          <label class="block text-sm font-medium text-slate-700">API key
+            <input id="openai-key" type="password" autocomplete="off" spellcheck="false" placeholder="API key ของค่ายที่เลือก (ไม่ต้องใส่เครื่องหมายคำพูด)" class="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+          </label>
+          <label class="block text-sm font-medium text-slate-700">โมเดล
+            <input id="summary-model" list="gemini-model-list" type="text" value="gpt-4o-mini" autocomplete="off" class="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+          </label>
+        </div>
+        <section id="maxplus-settings" class="mt-3 hidden">
+          <label class="block text-sm text-slate-700">MaxPlus Base URL
+            <input id="maxplus-base-url" value="https://api.maxplus-ai.cc/v1" type="url" class="mt-1 w-full rounded-lg border p-2">
+          </label>
+          <p class="mt-2 text-xs text-slate-600">เมื่อเลือก MaxPlus ข้อความงานวิจัยจะส่งไปที่บริการนี้ ใช้ API key ของ MaxPlus และชื่อโมเดลตามที่ผู้ให้บริการระบุ</p>
+          <button id="maxplus-check" type="button" class="mt-2 rounded-lg border bg-white p-2 text-sm">ตรวจคีย์และโหลดโมเดล MaxPlus</button>
+          <select id="maxplus-model-picker" aria-label="โมเดล MaxPlus" class="mt-2 block w-full rounded-lg border p-2"><option value="">เลือกโมเดล…</option></select>
+          <p id="maxplus-check-result" role="status" class="mt-2 text-sm text-slate-600"></p>
+        </section>
+        <datalist id="gemini-model-list"></datalist>
+        <label id="gemini-model-picker-label" class="mt-3 hidden text-sm text-slate-700">เลือกจากรายการโมเดล Gemini ที่โหลดมา
+          <select id="gemini-model-picker" class="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-2"><option value="">เลือกโมเดล…</option></select>
+        </label>
+        <button id="gemini-check" type="button" class="mt-3 hidden rounded-lg border border-indigo-200 bg-white px-4 py-2 text-sm text-indigo-700">ตรวจคีย์และโหลดโมเดล Gemini</button>
+        <p id="gemini-check-result" role="status" class="mt-2 text-sm text-slate-600"></p>
+<div class="settings-footer"><p>ข้อความและ metadata จะส่งไปยังบริการที่เลือก ค่า API คิดกับบัญชีของคุณ คีย์อยู่เฉพาะหน้านี้และไม่บันทึกลง storage</p><button id="clear-key" type="button" class="text-button">ล้าง API key</button></div></div></details>
+        <p id="selection-count" class="selection-banner">เลือกเปเปอร์บนการ์ดรายการอ้างอิง 0/5 รายการ</p>
+        <div id="ai-tools" class="tool-grid">
+          <button id="summary-button" type="button" class="tool-card"><span class="tool-icon">≋</span><span><b id="summary-button-label">สรุปงานวิจัย</b><small>เป้าหมาย วิธีการ ผลลัพธ์ และข้อจำกัด</small></span><span id="summary-spinner" class="spin hidden">◌</span><span class="tool-arrow">→</span></button>
+          <button data-ai="intents" type="button" class="tool-card"><span class="tool-icon">⌁</span><span><b>อ่านบริบท citation</b><small>ดูว่าแต่ละงานถูกอ้างถึงเพื่ออะไร</small></span><span class="tool-arrow">→</span></button>
+          <button data-ai="synthesis" type="button" class="tool-card"><span class="tool-icon">⊞</span><span><b>สังเคราะห์วรรณกรรม</b><small>เลือก 3–5 เปเปอร์ แล้วสำรวจ research gap</small></span><span class="tool-arrow">→</span></button>
+          <button data-ai="clusters" type="button" class="tool-card"><span class="tool-icon">◎</span><span><b>จัดกลุ่มธีมบนกราฟ</b><small>มองเครือข่ายผ่านสีและหัวข้อย่อย</small></span><span class="tool-arrow">→</span></button>
+        </div><div id="summary-output" role="status" class="output-block hidden"></div><div id="ai-output" role="status" class="output-block"></div>
+        <section class="panel chat-panel"><div class="panel-heading"><span class="icon-tile violet">✦</span><div><h3>คุยกับงานวิจัยของคุณ</h3><p>ถามจากเนื้อหาต้นทาง และ metadata ของ references ที่เลือก</p></div><span class="chat-label">PAPER Q&A</span></div><div id="chat-empty" class="chat-empty"><span>“</span><p>อะไรคือข้อจำกัดของงานนี้?<br>วิธีการต่างจากเปเปอร์ที่อ้างถึงอย่างไร?</p></div><div id="chat-log" role="log" class="chat-log"></div><form id="qa-form"><input id="qa-question" aria-label="คำถามงานวิจัย" maxlength="2000" required placeholder="ถามเกี่ยวกับงานวิจัยนี้…"><button type="submit" aria-label="ส่งคำถาม">↑</button></form><p class="chat-footnote">คำตอบใช้บริบทที่สกัดได้ เนื้อหายาวอาจถูกตัด และบางรายการอาจไม่มี abstract</p></section>
+      </section>
+      <footer><span>PaperRef Finder <b>→</b></span><p>Made for curious minds. · ตรวจสอบผลกับงานวิจัยต้นฉบับก่อนใช้อ้างอิง</p></footer>
+    </main>
+  </div>
   <script>
     (() => {
+      for (const link of document.querySelectorAll('a[href="#ai-settings"]')) link.addEventListener('click', () => { document.getElementById('ai-settings').open = true; });
       const MAX_BYTES = 50 * 1024 * 1024;
       const fileInput = document.getElementById('file-input');
       const dropzone = document.getElementById('dropzone');
@@ -270,7 +232,7 @@
         badge.className = 'inline-flex w-fit shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ' + accessBadgeStyle(paper.access_status);
         links.replaceChildren();
         if (paper.oa_pdf_url) links.append(makeLink('↓  ดาวน์โหลด PDF', paper.oa_pdf_url, 'bg-emerald-700 text-white hover:bg-emerald-800'));
-        if (paper.paper_url) links.append(makeLink('↗  เปิดหน้าบทความ', paper.paper_url, 'bg-teal-700 text-white hover:bg-teal-800'));
+        if (paper.paper_url) links.append(makeLink('→  เปิดหน้าบทความ', paper.paper_url, 'bg-teal-700 text-white hover:bg-teal-800'));
         if (paper.scholar_url) links.append(makeLink('⌕  Google Scholar', paper.scholar_url, 'bg-slate-100 text-slate-700 hover:bg-slate-200'));
       }
 
@@ -287,12 +249,15 @@
           document.getElementById('file-row').classList.add('hidden');
           showAlert('ไฟล์มีขนาดเกิน 50 MB กรุณาเลือกไฟล์ที่เล็กกว่านี้'); return;
         }
+        resetDatasets();
         selectedFile = file;
         activeFile = file; activeDoi = ''; allResults = []; allCitingResults = [];
         selectedPapers.clear(); clusterColors.clear(); chatHistory = []; updateSelection();
         document.getElementById('chat-log').textContent = '';
         document.getElementById('summary-output').classList.add('hidden');
         document.getElementById('ai-output').textContent = '';
+        document.getElementById('extraction-output').textContent = '';
+        document.getElementById('chat-empty').classList.remove('hidden');
         document.getElementById('file-name').textContent = file.name + ' · ' + (file.size / (1024 * 1024)).toFixed(2) + ' MB';
         document.getElementById('file-row').classList.remove('hidden');
         document.getElementById('file-row').classList.add('flex');
@@ -303,7 +268,7 @@
         analyzeButton.disabled = busy || !selectedFile;
         document.getElementById('button-spinner').classList.toggle('hidden', !busy);
         document.getElementById('loading-track').classList.toggle('hidden', !busy);
-        document.getElementById('button-label').textContent = busy ? 'กำลังสกัดและค้นหาลิงก์...' : 'ค้นหารายการอ้างอิง';
+        document.getElementById('button-label').textContent = busy ? 'กำลังสกัด…' : 'สกัดด้วยโค้ด →';
       }
       const selectedPapers = new Set();
       let clusterColors = new Map();
@@ -311,17 +276,57 @@
       let activeDoi = '';
       let activeFile = null;
       const palette = ['#7c3aed', '#0284c7', '#059669', '#ea580c', '#db2777'];
-      function updateSelection() { document.getElementById('selection-count').textContent = `เลือกเปเปอร์บนการ์ดด้านล่าง ${selectedPapers.size}/5 รายการ`; }
-      function displayPayload(payload) {
+      const datasets = new Map();
+      let activeDataset = null;
+      let sourceVersion = 0;
+      const datasetLabels = {code: 'สกัดด้วยโค้ด', ai: 'สกัดด้วย AI', doi: 'จากฐานข้อมูล DOI'};
+      function saveDataset() {
+        const record = datasets.get(activeDataset);
+        if (record) {
+          record.selected = new Set(selectedPapers); record.colors = new Map(clusterColors);
+          record.history = [...chatHistory]; record.chat = document.getElementById('chat-log').textContent;
+          record.analysis = document.getElementById('ai-output').textContent;
+        }
+      }
+      function resetDatasets() {
+        datasets.clear(); activeDataset = null; sourceVersion += 1;
         selectedPapers.clear(); clusterColors.clear(); chatHistory = [];
-        document.getElementById('network-legend').innerHTML = '<span>● สีเขียว: มี citation link · สีเทา: ยังไม่พบ citation link</span>';
-        document.getElementById('chat-log').textContent = ''; document.getElementById('ai-output').textContent = '';
+        document.getElementById('chat-log').textContent = '';
+        document.getElementById('chat-empty').classList.remove('hidden');
         document.getElementById('summary-output').classList.add('hidden');
+        document.getElementById('ai-output').textContent = '';
+        updateDatasetTabs();
+      }
+      function updateDatasetTabs() {
+        for (const kind of ['code', 'ai', 'doi']) {
+          const button = document.getElementById('dataset-' + kind);
+          const record = datasets.get(kind);
+          button.disabled = !record || aiBusy;
+          button.setAttribute('aria-pressed', String(activeDataset === kind));
+          document.getElementById('dataset-' + kind + '-count').textContent = record ? record.payload.results.length : '—';
+        }
+      }
+      function updateSelection() { document.getElementById('selection-count').textContent = `${activeDataset ? datasetLabels[activeDataset] + ' · ' : ''}เลือกเปเปอร์บนการ์ด ${selectedPapers.size}/5 รายการ เพื่อสังเคราะห์หรือถาม–ตอบ`; }
+      for (const button of document.querySelectorAll('[data-dataset]')) {
+        button.onclick = () => { const record = datasets.get(button.dataset.dataset); if (record && !aiBusy) displayPayload(record.payload, button.dataset.dataset, true); };
+      }
+      function displayPayload(payload, kind = (payload.mode === 'doi' ? 'doi' : 'code'), restoring = false) {
+        saveDataset();
+        if (!restoring) datasets.set(kind, {payload, selected: new Set(), colors: new Map(), history: [], chat: '', analysis: '', file: kind === 'doi' ? null : selectedFile, doi: kind === 'doi' ? (payload.source_paper?.doi || document.getElementById('doi-input').value.trim()) : ''});
+        activeDataset = kind;
+        const record = datasets.get(kind);
+        selectedPapers.clear(); for (const id of record.selected) selectedPapers.add(id);
+        clusterColors = new Map(record.colors); chatHistory = [...record.history];
+        document.getElementById('network-legend').innerHTML = '<span>● สีเขียว: มี citation link · สีเทา: ยังไม่พบ citation link</span>';
+        document.getElementById('chat-log').textContent = record.chat; document.getElementById('ai-output').textContent = record.analysis;
+        document.getElementById('chat-empty').classList.toggle('hidden', Boolean(record.chat));
         updateSelection();
-        activeFile = payload.mode === 'doi' ? null : selectedFile;
-        activeDoi = payload.mode === 'doi' ? document.getElementById('doi-input').value.trim() : '';
+        activeFile = record.file;
+        activeDoi = record.doi;
         resultMode = payload.mode || 'pdf';
         allResults = payload.results || [];
+        allResults.forEach(item => { item.extraction_source = kind; });
+        document.getElementById('dataset-note').textContent = kind === 'ai' ? 'ชุดนี้สกัดบรรณานุกรมด้วย AI · ผลจากโค้ดยังอยู่ในแท็บของตัวเอง · ตรวจเทียบกับ PDF ก่อนใช้' : kind === 'code' ? 'ชุดนี้สกัดบรรณานุกรมด้วยโค้ด · ไม่ใช้ AI key · สลับไปดูผล AI ได้เมื่อสกัดอีกวิธีแล้ว' : 'ชุดนี้มาจากฐานข้อมูลวิชาการของ DOI · จำนวนรายการอาจขึ้นกับข้อมูลที่ฐานข้อมูลเปิดเผย';
         allCitingResults = payload.citing_papers || [];
         sourceName = payload.filename || 'references';
         referenceCount = Number(payload.total_references ?? allResults.length);
@@ -333,7 +338,7 @@
         renderSourcePaper(resultMode === 'doi' ? payload.source_paper : null);
         document.getElementById('network-legend').classList.toggle('hidden', resultMode === 'doi');
         document.getElementById('result-filename').textContent = sourceName;
-        document.getElementById('results-heading').textContent = resultMode === 'doi' ? 'เครือข่ายการอ้างอิงของงานวิจัยนี้' : 'รายการอ้างอิงของคุณ';
+        document.getElementById('results-heading').textContent = resultMode === 'doi' ? 'เครือข่ายของงานวิจัยนี้' : 'รายการอ้างอิง · ' + datasetLabels[kind];
         document.getElementById('total-stat-label').textContent = resultMode === 'doi' ? 'รายการที่งานนี้อ้างถึง' : 'ตรวจพบ References';
         document.getElementById('citation-stat-label').textContent = resultMode === 'doi' ? 'ถูกอ้างโดย (ฐานข้อมูล)' : 'Citation links ในเนื้อหา';
         document.getElementById('links-stat-label').textContent = resultMode === 'doi' ? 'รายการอ้างอิงที่มีลิงก์' : 'พบลิงก์ไปยังเปเปอร์';
@@ -365,7 +370,8 @@
         currentAccessFilter = 'all';
         setView('references');
         resultSection.classList.remove('hidden');
-        resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        updateDatasetTabs();
+        if (!restoring) resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
       dropzone.addEventListener('click', (event) => {
@@ -376,11 +382,7 @@
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); fileInput.click(); }
       });
       fileInput.addEventListener('change', () => chooseFile(fileInput.files[0]));
-      document.getElementById('remove-file').addEventListener('click', () => {
-        fileInput.value = ''; selectedFile = null; activeFile = null;
-        document.getElementById('file-row').classList.add('hidden');
-        analyzeButton.disabled = true; hideAlert();
-      });
+      document.getElementById('remove-file').addEventListener('click', () => fileInput.click());
       ['dragenter', 'dragover'].forEach((eventName) => dropzone.addEventListener(eventName, (event) => {
         event.preventDefault(); dropzone.classList.add('drop-active');
       }));
@@ -392,12 +394,14 @@
       analyzeButton.addEventListener('click', async () => {
         if (!selectedFile) return;
         hideAlert(); setBusy(true);
-        const form = new FormData(); form.append('file', selectedFile);
+        const inputFile = selectedFile; const requestVersion = sourceVersion;
+        const form = new FormData(); form.append('file', inputFile);
         try {
           const response = await fetch('/api/references', { method: 'POST', body: form });
           const payload = await response.json();
           if (!response.ok) throw new Error(payload.detail || 'ประมวลผลไฟล์ไม่สำเร็จ');
-          payload.filename = selectedFile.name.replace(/\.pdf$/i, '') || 'references';
+          if (requestVersion !== sourceVersion) return;
+          payload.filename = inputFile.name.replace(/\.pdf$/i, '') || 'references';
           displayPayload(payload);
         } catch (error) {
           showAlert(error.message || 'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองอีกครั้ง');
@@ -409,17 +413,21 @@
         if (!doi) { showAlert('กรุณากรอก DOI ก่อนค้นหา'); return; }
         hideAlert();
         const button = document.getElementById('doi-button');
+        const requestVersion = sourceVersion;
         button.disabled = true; button.textContent = 'กำลังค้นหา DOI...';
         try {
           const form = new FormData(); form.append('doi', doi);
           const response = await fetch('/api/doi', { method: 'POST', body: form });
           const payload = await response.json();
           if (!response.ok) throw new Error(payload.detail || 'ค้นหา DOI ไม่สำเร็จ');
-          displayPayload(payload);
+          if (requestVersion !== sourceVersion) return;
+          resetDatasets(); selectedFile = null; fileInput.value = ''; activeFile = null;
+          document.getElementById('file-row').classList.add('hidden'); analyzeButton.disabled = true;
+          displayPayload(payload, 'doi');
         } catch (error) {
           showAlert(error.message || 'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองอีกครั้ง');
         } finally {
-          button.disabled = false; button.textContent = 'ค้นหาด้วย DOI';
+          button.disabled = false; button.textContent = 'ค้นหาด้วย DOI →';
         }
       });
       document.getElementById('doi-input').addEventListener('keydown', (event) => {
@@ -495,29 +503,32 @@
       let aiBusy = false;
       async function callAI(feature, extra = {}) {
         const key = document.getElementById('openai-key').value.trim();
-        if (!key) throw new Error('กรุณากรอก API key ของค่ายที่เลือก');
+        if (!key) { const settings = document.getElementById('ai-settings'); settings.open = true; settings.scrollIntoView({behavior: 'smooth', block: 'center'}); throw new Error('กรุณาเชื่อมต่อ AI และกรอก API key ของค่ายที่เลือกก่อน'); }
         if (providerSelect.value === 'maxplus' && !document.getElementById('summary-model').value.trim()) throw new Error('เลือกหรือกรอกชื่อโมเดล MaxPlus ก่อน');
         if (aiBusy) throw new Error('รอคำขอ AI ปัจจุบันเสร็จก่อน');
+        const requestVersion = sourceVersion; const requestDataset = activeDataset;
         const papers = (feature === 'synthesis' || feature === 'qa') ? allResults.filter(p => selectedPapers.has(p.reference_number)) : allResults;
         if (feature === 'synthesis' && (papers.length < 3 || papers.length > 5)) throw new Error('เลือก 3–5 references ก่อนสังเคราะห์');
         const form = new FormData();
         const file = feature === 'extract-references' ? selectedFile : (activeFile || (!activeDoi ? selectedFile : null));
         const doi = activeDoi || document.getElementById('doi-input').value.trim();
+        if (feature === 'extract-references' && !file) throw new Error('เลือก PDF ก่อนสกัดด้วย AI');
         if (file) form.append('file', file); else if (doi) form.append('doi', doi); else throw new Error('เลือก PDF หรือ DOI ก่อนใช้ AI');
         form.append('provider', providerSelect.value);
         if (providerSelect.value === 'maxplus') form.append('base_url', document.getElementById('maxplus-base-url').value.trim());
         form.append('model', document.getElementById('summary-model').value.trim());
         form.append('payload', JSON.stringify({papers: feature === 'extract-references' ? [] : papers.map(p => ({id: p.reference_number, title: String(p.matched_title || p.title || p.original_text || '').slice(0, 1200), doi: p.doi || null, year: p.year ? String(p.year) : null, original_text: String(p.original_text || '').slice(0, 4000)})), ...extra}));
-        aiBusy = true;
-        document.querySelectorAll('#ai-tools button, #summary-button, #qa-form button').forEach(b => b.disabled = true);
+        aiBusy = true; updateDatasetTabs();
+        document.querySelectorAll('[data-ai], #summary-button, #qa-form button').forEach(b => b.disabled = true);
         try {
           const response = await fetch(feature === 'summary' ? '/api/summarize' : '/api/ai/' + feature, {method: 'POST', body: form, headers: {'X-AI-API-Key': key}});
           const payload = await response.json();
           if (!response.ok) throw new Error(typeof payload.detail === 'string' ? payload.detail : 'ข้อมูลคำขอไม่ถูกต้อง');
+          if (requestVersion !== sourceVersion || requestDataset !== activeDataset) throw new Error('งานต้นทางหรือชุดผลลัพธ์เปลี่ยนแล้ว กรุณาเรียกเครื่องมือกับชุดปัจจุบัน');
           return payload;
         } finally {
-          aiBusy = false;
-          document.querySelectorAll('#ai-tools button, #summary-button, #qa-form button').forEach(b => b.disabled = false);
+          aiBusy = false; updateDatasetTabs();
+          document.querySelectorAll('[data-ai], #summary-button, #qa-form button').forEach(b => b.disabled = false);
         }
       }
       document.getElementById('summary-button').onclick = async () => {
@@ -527,8 +538,8 @@
         catch (e) { output.textContent = e.message; }
       };
       document.querySelectorAll('[data-ai]').forEach(button => button.onclick = async () => {
-        const output = document.getElementById('ai-output');
-        output.textContent = 'กำลังวิเคราะห์…';
+        const output = document.getElementById(button.dataset.ai === 'extract-references' ? 'extraction-output' : 'ai-output');
+        output.textContent = button.dataset.ai === 'extract-references' ? 'กำลังสกัดด้วย AI… ผลจะแสดงแยกจากชุดโค้ด' : 'กำลังวิเคราะห์…';
         try {
           const feature = button.dataset.ai;
           const p = await callAI(feature);
@@ -538,12 +549,14 @@
           } else if (feature === 'clusters') {
             clusterColors.clear();
             p.clusters.forEach((c, i) => c.ids.forEach(id => clusterColors.set(id, {color: palette[i], name: c.name})));
-            renderNetwork();
+            document.getElementById('network-panel').open = true;
+            setView('references');
             const legend = document.getElementById('network-legend'); legend.replaceChildren(); legend.classList.remove('hidden');
             p.clusters.forEach((c, i) => { const label = document.createElement('span'); label.style.color = palette[i]; label.textContent = '● ' + c.name; legend.append(label); });
             output.textContent = 'จัดสีธีมบนกราฟแล้ว · ธีมเป็นผลวิเคราะห์ AI จากชื่อเรื่องและ abstract ที่พบ';
           } else if (feature === 'extract-references') {
-            displayPayload(p); output.textContent = 'สกัดด้วย AI แล้ว กรุณาตรวจจำนวนและรายการเทียบ PDF';
+            p.filename = selectedFile.name.replace(/\.pdf$/i, '') || 'งานวิจัย';
+            displayPayload(p, 'ai'); output.textContent = 'สกัดด้วย AI แล้ว · เปิดแท็บ “สกัดด้วย AI” เพื่อดูผล และสลับกลับไปดูชุดโค้ดได้';
           } else output.textContent = p.synthesis;
         } catch (e) { output.textContent = e.message; }
       });
@@ -554,6 +567,7 @@
         const log = document.getElementById('chat-log');
         try {
           const p = await callAI('qa', {question, history: chatHistory.slice(-10)});
+          document.getElementById('chat-empty').classList.add('hidden');
           chatHistory.push({role: 'user', content: question}, {role: 'assistant', content: p.answer.slice(0, 2000)});
           log.textContent += `คุณ: ${question}\nAI: ${p.answer}\n\n`; input.value = ''; log.scrollTop = log.scrollHeight;
         } catch (e) { showAlert(e.message); }
@@ -612,7 +626,9 @@
         document.getElementById('empty-search').classList.toggle('hidden', filtered.length !== 0);
         for (const item of filtered) {
           const card = document.createElement('article');
-          card.className = 'rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5';
+          card.className = 'reference-card';
+          const provenance = document.createElement('span'); provenance.className = 'provenance-badge' + (activeDataset === 'ai' ? ' ai' : '');
+          provenance.textContent = (activeDataset === 'ai' ? '✦ ' : '⌘ ') + datasetLabels[activeDataset]; card.append(provenance);
           card.dataset.referenceNumber = String(item.reference_number);
           const top = document.createElement('div'); top.className = 'flex items-start gap-3';
           const number = document.createElement('span'); number.className = 'grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-xs font-bold text-slate-600';
@@ -666,11 +682,11 @@
           const original = document.createElement('p'); original.className = 'line-clamp-3 mt-3 text-sm leading-6 text-slate-600';
           original.textContent = item.original_text; card.append(original);
           const actions = document.createElement('div'); actions.className = 'mt-4 flex flex-wrap gap-2';
-          if (item.paper_url) actions.append(makeLink('↗  ดู Paper', item.paper_url, 'bg-teal-700 text-white hover:bg-teal-800'));
+          if (item.paper_url) actions.append(makeLink('→  ดู Paper', item.paper_url, 'bg-teal-700 text-white hover:bg-teal-800'));
           if (item.oa_pdf_url) actions.append(makeLink('↓  ดาวน์โหลด PDF', item.oa_pdf_url, 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'));
           if (Array.isArray(item.source_links)) {
             for (const source of item.source_links) {
-              if (source.url) actions.append(makeLink('↗  ' + source.name, source.url, 'bg-slate-100 text-slate-700 hover:bg-slate-200'));
+              if (source.url) actions.append(makeLink('→  ' + source.name, source.url, 'bg-slate-100 text-slate-700 hover:bg-slate-200'));
             }
           }
           if (item.scholar_url) actions.append(makeLink('⌕  Google Scholar', item.scholar_url, 'bg-slate-100 text-slate-700 hover:bg-slate-200'));
@@ -700,7 +716,7 @@
             : `ฐานข้อมูลระบุ ${citationLinkCount} citations · แสดงรายชื่อได้ ${allCitingResults.length} งาน`;
         } else {
           document.getElementById('view-description').textContent = view === 'references'
-            ? `รายการจากบรรณานุกรมท้าย PDF จำนวน ${allResults.length} รายการ`
+            ? `${datasetLabels[activeDataset]} · บรรณานุกรมท้าย PDF จำนวน ${allResults.length} รายการ`
             : `พบ ${citationLinkCount} citation links ในเนื้อหา ซึ่งชี้ไปยัง ${citedReferenceCount} references`;
         }
         renderResults();
@@ -963,13 +979,13 @@
       }
       document.getElementById('export-json').addEventListener('click', () => {
         const exportItems = visibleItems();
-        const suffix = currentView === 'citations' ? '-citing-papers' : '-references';
+        const suffix = '-' + activeDataset + (currentView === 'citations' ? '-citing-papers' : '-references');
         downloadBlob(JSON.stringify(exportItems, null, 2), sourceName + suffix + '.json', 'application/json;charset=utf-8');
       });
       document.getElementById('export-csv').addEventListener('click', () => {
         const exportItems = visibleItems();
-        const suffix = currentView === 'citations' ? '-citing-papers' : '-references';
-        const columns = ['reference_number', 'citation_mentions', 'original_text', 'title', 'year', 'matched_title', 'doi', 'paper_url', 'oa_pdf_url', 'access_status', 'access_label', 'metadata_sources', 'scholar_url'];
+        const suffix = '-' + activeDataset + (currentView === 'citations' ? '-citing-papers' : '-references');
+        const columns = ['extraction_source', 'reference_number', 'citation_mentions', 'original_text', 'title', 'year', 'matched_title', 'doi', 'paper_url', 'oa_pdf_url', 'access_status', 'access_label', 'metadata_sources', 'scholar_url'];
         const escape = (value) => {
           let text = String(value ?? '');
           if (/^\s*[=+@-]/.test(text)) text = "'" + text;
@@ -981,5 +997,4 @@
       });
     })();
   </script>
-</body>
-</html>
+</body></html>
