@@ -65,3 +65,5 @@ Existing `/api/references` and `/api/doi` responses remain compatible; PDF resul
 Model inputs accept both `gemini-2.5-flash` and `models/gemini-2.5-flash`; the prefix is normalized before constructing the API URL. Matching surrounding quotation marks are removed from pasted keys. No assumption is made about a key's prefix.
 
 Known upstream error reasons are translated into actionable messages (invalid/expired key, API restrictions, disabled service, missing billing). HTTP 400 is returned as 400, missing model as 422, permission errors as 401/403 and quota errors as 429. Unknown upstream service failures remain 502. Server logs contain only provider, upstream HTTP status and an allowlisted reason code, never keys or raw response bodies.
+
+HTTP 402 (Payment Required) is passed through with a billing/credits explanation rather than converted to 502. This status alone does not identify whether billing setup, credit balance or model eligibility caused the rejection. The UI offers an explicit dropdown of Gemini ListModels names; it does not automatically switch models or issue generation requests.

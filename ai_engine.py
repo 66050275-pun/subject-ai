@@ -70,6 +70,8 @@ def raise_provider_error(response, provider):
         raise HTTPException(403, prefix + ': ' + restrictions[reason])
     if response.status_code in (401, 403):
         raise HTTPException(response.status_code, prefix + ': คีย์ไม่มีสิทธิ์ โปรดตรวจ project, API restrictions และสิทธิ์ใช้โมเดล')
+    if response.status_code == 402:
+        raise HTTPException(402, prefix + ': บริการปลายทางแจ้ง Payment Required (HTTP 402) กรุณาตรวจ billing, เครดิต และสิทธิ์ของโมเดลใน project ที่ออก API key การโหลดรายการโมเดลได้ไม่ได้ยืนยันว่าบัญชีสร้างคำตอบได้')
     if response.status_code == 404:
         raise HTTPException(422, prefix + ': ไม่พบโมเดลใน API นี้ หากใช้ Gemini ให้กดตรวจคีย์และโหลดรายการโมเดล')
     if response.status_code == 429:
