@@ -10,7 +10,7 @@ The AI tools support OpenAI, Google Gemini, Anthropic Claude and MaxPlus AI (Ope
 
 ### Streamlit / mobile hosting
 
-To host directly from this GitHub repo on Streamlit Community Cloud, choose **`streamlit_app.py`** as the main file (not `main.py`). See [STREAMLIT_DEPLOY.md](STREAMLIT_DEPLOY.md) for Thai setup steps, mobile access and optional Secrets. Locally run `python -m streamlit run streamlit_app.py` after installing `requirements.txt`. The Streamlit frontend calls the same FastAPI endpoints in-process and does not require a second backend server. The existing FastAPI/Tailwind frontend remains available using the commands below.
+To host directly from this GitHub repo on Streamlit Community Cloud, choose **`streamlit_app.py`** as the main file (not `main.py`). See [STREAMLIT_DEPLOY.md](STREAMLIT_DEPLOY.md) for Thai setup steps, mobile access and optional Secrets. Locally run `python -m streamlit run streamlit_app.py` after installing `requirements.txt`. Streamlit renders the exact same HTML, CSS and interactive graph as the FastAPI frontend, with responsive layouts for desktop, phone and tablet. A session-scoped custom component forwards uploads and streamed API responses to FastAPI in-process without a second backend server or resetting the page on reruns. The FastAPI frontend remains available using the commands below.
 
 ### FastAPI frontend
 

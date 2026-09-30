@@ -44,18 +44,23 @@ python -m streamlit run streamlit_app.py
 
 เปิด `http://localhost:8501` ส่วนหน้า FastAPI เดิมยังเปิดได้ด้วย `uvicorn main:app --reload` ตามปกติ หากต้องการลองจากโทรศัพท์ใน Wi-Fi เดียวกัน ใช้ `python -m streamlit run streamlit_app.py --server.address 0.0.0.0` แล้วเปิด `http://<IP เครื่อง Mac>:8501` บนมือถือ ไม่ต้องปิด CORS/XSRF protection ไม่ต้องเปิดพอร์ตออกอินเทอร์เน็ตเพื่อ deploy บน Cloud
 
-## ฟีเจอร์และไฟล์
+## หน้าตาและไฟล์ที่ใช้ร่วมกัน
 
-- `streamlit_app.py`: หน้า Streamlit สำหรับ PDF/DOI แยกชุดโค้ด/AI/DOI, ค้น OA เพิ่ม, เลือก references, export JSON/CSV/ลิงก์ PDF, สรุป, intent, synthesis, graph themes และ Q&A
-- `streamlit_backend.py`: เรียก FastAPI เดิมผ่าน ASGI ภายใน process รับ multipart และรายงาน NDJSON ทีละ event สำหรับ AI extraction/OA search จึงไม่ต้องรอผลทั้งหมดเพื่อแสดงความคืบหน้า
-- `streamlit_graph.py`: ฝัง SVG renderer เดิม รองรับลาก/ซูม/Fit และเปิดแหล่งต้นทาง เลือกเปเปอร์สำหรับ AI ผ่าน multiselect ของหน้า Streamlit
-- `.streamlit/config.toml`: ธีม, จำกัด upload 50 MB, headless server และเปิด CORS/XSRF protections
+Streamlit และ FastAPI ใช้หน้าเว็บ **ชุดเดียวกัน** จาก `static/index.html`, `static/app.css` และ `static/graph.js` จึงมีดีไซน์ การ์ดรายการ กราฟลาก/ซูม กล่อง AI และการแยกชุดโค้ด/AI/DOI เหมือนกัน หน้าจอปรับตามความกว้างบนคอม โทรศัพท์ และ iPad โดยไม่มีหน้า widget อีกชุด
 
-หน้า Streamlit ใช้ widget ที่เหมาะกับมือถือ จึงมีหน้าตาต่างจาก Tailwind เดิม แต่ใช้ extractor/resolver/AI endpoints ชุดเดียวกัน ไม่ได้สร้างตรรกะค้นหาอีกชุด
+- `streamlit_app.py`: entry point ของ Cloud และตัวห่อหน้าเว็บแบบเต็มพื้นที่
+- `streamlit_frontend.py`: อ่าน HTML/CSS/กราฟเดิมแล้วฝัง assets ภายใน component ไม่ต้องคัดลอกดีไซน์มาแก้สองที่
+- `streamlit_component/index.html`: ตัวเชื่อม browser fetch, upload และ streaming ผ่าน Streamlit; เก็บหน้าเว็บเดิมไว้ระหว่าง reruns เพื่อไม่รีเซ็ตไฟล์ที่เลือก กราฟ แช็ต และ checkbox
+- `streamlit_transport.py`: เรียก FastAPI เดิมผ่าน ASGI ภายใน process แยกคำขอแต่ละ session ส่ง NDJSON ทีละส่วน รองรับการยกเลิกและป้องกันการยิงคำขอซ้ำเมื่อ rerun
+- `.streamlit/config.toml`: จำกัด upload 50 MB, headless server และเปิด CORS/XSRF protections
+
+หากแอปที่ deploy อยู่ยังแสดงหน้าเก่า ให้ตรวจว่าเลือก branch `main` และ main file `streamlit_app.py` แล้วกด **Manage app → Reboot app** จากนั้นรีเฟรชเบราว์เซอร์ การเปลี่ยน UI ครั้งนี้ไม่ต้องสร้างแอปใหม่
 
 ## ข้อมูลผู้ใช้และข้อจำกัด
 
-PDF, ผลค้นหา, แช็ต และคีย์ AI อยู่ใน session ของผู้ใช้ในหน่วยความจำเซิร์ฟเวอร์ ไม่ถูกเขียนเป็นไฟล์หรือ global cache คีย์ส่งผ่านเซิร์ฟเวอร์เพื่อเรียก provider ไม่ได้อยู่เฉพาะในเบราว์เซอร์ กดล้างคีย์/ล้าง session เมื่อใช้เสร็จ การรีเฟรชหรือเปลี่ยนการเชื่อมต่ออาจเริ่ม session ใหม่; ดาวน์โหลดผลก่อนปิดหน้า
+ไฟล์ที่เลือก ผลค้นหา แช็ต และคีย์ AI อยู่ในหน่วยความจำหน้าเว็บของผู้ใช้ เมื่อเรียก API ข้อมูลที่จำเป็นจะผ่านเซิร์ฟเวอร์ใน session นั้นเพื่อประมวลผลและเรียก provider ไม่ได้อยู่เฉพาะในเบราว์เซอร์ ตัวเชื่อมล้าง payload คำขอออกจาก component หลังเซิร์ฟเวอร์รับแล้ว และล้างส่วนคำตอบเมื่อเบราว์เซอร์ยืนยันรับ ไม่มีการเขียน PDF/คีย์ลงไฟล์หรือ global user-data cache
+
+อย่าแชร์คีย์ AI ใน GitHub หรือแช็ต ล้างคีย์ในหน้าแอปเมื่อใช้เสร็จ การรีเฟรช ปิดแท็บ หรือหลุดจาก session อาจทำให้ผลหาย ดาวน์โหลดผลก่อนปิดหน้า
 
 Cloud อาจพักแอปเมื่อไม่มีการใช้งาน และมีข้อจำกัดทรัพยากร/การอัปโหลด งาน AI หรือการค้นหลายแหล่งอาจใช้เวลา/โควตา ไม่ได้รับรอง uptime หรือจำนวนผู้ใช้พร้อมกัน งาน PDF ใช้ได้สูงสุด 50 MB; intent/AI graph themes สูงสุด 100 references ส่วน synthesis เลือก 3–5 รายการ
 
@@ -67,6 +72,6 @@ Cloud อาจพักแอปเมื่อไม่มีการใช�
 python -m unittest discover -s tests -v
 ```
 
-ครอบคลุม backend เดิม, ASGI multipart/NDJSON, streamed error, Streamlit reruns, ทุก action AI ด้วย API จำลอง, provenance/selection, PDF/DOI และการแยกคีย์ระหว่าง sessions ตรวจด้วย Chromium ที่ความกว้างมือถือ 390 px รวมการอัปโหลดและกราฟ ไม่ได้ deploy บัญชี Streamlit ของผู้ใช้หรือทดสอบคีย์จริง
+Unit tests ครอบคลุม backend เดิม, frontend assets ชุดเดียวกัน, ASGI multipart/JSON/NDJSON, cancellation, การยืนยันรับผล, คำขอซ้ำจาก reruns และการแยก session ทดสอบเบราว์เซอร์ Chromium กับ Streamlit จริงและ API จำลองที่ขนาด 1440×1000, 390×844, 768×1024 และ 1024×768 รวมอัปโหลด, streaming, ทุก action AI, export และการรักษาข้อมูลเมื่อปรับขนาดหน้าจอ ไม่ได้ deploy บัญชี Streamlit ของผู้ใช้หรือทดสอบคีย์จริง
 
 ถ้า deploy แล้วเกิด error ให้ดู **Manage app → Logs** ก่อน ตรวจ main file path, dependencies และชื่อ Secrets ไม่ต้องส่งค่าคีย์จริงมาในแช็ต
