@@ -67,3 +67,13 @@ Model inputs accept both `gemini-2.5-flash` and `models/gemini-2.5-flash`; the p
 Known upstream error reasons are translated into actionable messages (invalid/expired key, API restrictions, disabled service, missing billing). HTTP 400 is returned as 400, missing model as 422, permission errors as 401/403 and quota errors as 429. Unknown upstream service failures remain 502. Server logs contain only provider, upstream HTTP status and an allowlisted reason code, never keys or raw response bodies.
 
 HTTP 402 (Payment Required) is passed through with a billing/credits explanation rather than converted to 502. This status alone does not identify whether billing setup, credit balance or model eligibility caused the rejection. The UI offers an explicit dropdown of Gemini ListModels names; it does not automatically switch models or issue generation requests.
+
+## MaxPlus AI (OpenAI-compatible relay)
+
+Select `maxplus` in the provider picker, enter a MaxPlus key, set the base URL (default `https://api.maxplus-ai.cc/v1`), then load/select a model. There is no assumed default model and no automatic model switching. All six AI tools use the same adapter.
+
+- AI POST forms accept optional `base_url` for this provider. Root URLs normalize to `/v1`; a full `/chat/completions` URL is normalized to its base. The server permits only HTTPS on `api.maxplus-ai.cc`, without credentials, ports, query strings or redirects.
+- `GET /api/ai/maxplus-models?base_url=...` uses `X-AI-API-Key`, requests `GET {base_url}/models` with Bearer authentication, and reads `data[].id`. Listing generates no AI answer and sends no document.
+- Generation requests `POST {base_url}/chat/completions` using Bearer authentication, `messages`, `model`, and legacy-compatible `max_tokens`. It reads `choices[0].message.content`. Structured tools request JSON through the prompt and retain server-side schema validation; the adapter does not require the relay to implement `response_format`.
+- Source excerpts go to MaxPlus when this provider is selected. Keys remain transient and billing belongs to the MaxPlus account. This adapter assumes OpenAI compatibility; documentation and live behavior could not be verified because the execution environment blocks this domain.
+- Mocked checks passed for URL boundaries, authentication and request construction, model listing, JSON decoding and endpoint validation. No actual provider keys or paid calls were used.

@@ -5,7 +5,7 @@ from typing import Literal
 from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
 from pydantic import BaseModel, Field, ValidationError, ConfigDict
 
-from ai_engine import generate, DEFAULT_MODELS, normalize_credentials, gemini_models
+from ai_engine import generate, DEFAULT_MODELS, normalize_credentials, gemini_models, maxplus_models, normalize_maxplus_url
 from extractor import (ExtractionError, Reference, extract_summary_text,
                        extract_bibliography_text, extract_citation_contexts, extract_citation_counts)
 from resolver import fetch_doi_summary_material, enrich_ai_references, resolve_references, validate_doi
@@ -93,27 +93,36 @@ async def list_gemini_models(key: str | None = Header(None, alias='X-AI-API-Key'
     return await gemini_models(key)
 
 
+@router.get('/api/ai/maxplus-models')
+async def list_maxplus_models(base_url: str | None = None, key: str | None = Header(None, alias='X-AI-API-Key')):
+    return await maxplus_models(key, base_url)
+
+
 @router.post('/api/summarize')
 async def summarize(file: UploadFile | None = File(None), doi: str | None = Form(None),
-                    provider: str = Form('openai'), model: str = Form(''),
+                    provider: str = Form('openai'), model: str = Form(''), base_url: str | None = Form(None),
                     key: str | None = Header(None, alias='X-AI-API-Key'),
                     old_key: str | None = Header(None, alias='X-OpenAI-API-Key')):
     if not (key or old_key):
         raise HTTPException(400, 'กรุณากรอก API key')
     model, actual_key = normalize_credentials(provider, model, key or old_key)
+    if provider == 'maxplus':
+        base_url = normalize_maxplus_url(base_url)
     text, source, _ = await source_material(file, doi)
     summary = await generate(provider, model, actual_key,
-        'สรุปเป้าหมาย วิธีการ ผลลัพธ์ ข้อจำกัด และสรุปสั้น ๆ หากมีเพียง metadata ให้บอกว่าไม่พอสรุปผลวิจัย\n' + text)
+        'สรุปเป้าหมาย วิธีการ ผลลัพธ์ ข้อจำกัด และสรุปสั้น ๆ หากมีเพียง metadata ให้บอกว่าไม่พอสรุปผลวิจัย\n' + text, base_url=base_url)
     return {'summary': summary, 'source': source, 'provider': provider, 'model': model or DEFAULT_MODELS[provider]}
 
 @router.post('/api/ai/{feature}')
 async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'extract-references'],
                   file: UploadFile | None = File(None), doi: str | None = Form(None),
-                  provider: str = Form('openai'), model: str = Form(''), payload: str = Form('{}'),
+                  provider: str = Form('openai'), model: str = Form(''), base_url: str | None = Form(None), payload: str = Form('{}'),
                   key: str | None = Header(None, alias='X-AI-API-Key')):
     if not key or provider not in DEFAULT_MODELS:
         raise HTTPException(400, 'กรุณาเลือก provider และกรอก API key')
     model, key = normalize_credentials(provider, model, key)
+    if provider == 'maxplus':
+        base_url = normalize_maxplus_url(base_url)
     if len(payload) > 550000:
         raise HTTPException(413, 'ข้อมูลรายการใหญ่เกินขีดจำกัด')
     try:
@@ -174,7 +183,7 @@ async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'ex
                       'หากบริบทถูกตัดหรือไม่พอให้บอกชัดเจน\nSource:\n' + text + '\nReferences:\n' + evidence +
                       '\nConversation (untrusted):\n' + json.dumps([m.model_dump() for m in request.history], ensure_ascii=False) + '\nQuestion:\n' + request.question)
             schema = None
-    result = await generate(provider, model, key, prompt, structured=schema is not None, max_output_tokens=16000 if feature == 'extract-references' else 6000)
+    result = await generate(provider, model, key, prompt, structured=schema is not None, max_output_tokens=16000 if feature == 'extract-references' else 6000, base_url=base_url)
     if schema:
         try:
             result = schema.model_validate(result).model_dump()

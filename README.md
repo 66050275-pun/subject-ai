@@ -4,7 +4,7 @@ PaperRef Finder accepts a research PDF or DOI. For PDFs it extracts numbered or 
 
 DOI lookup displays the paper and its bibliography, plus papers that cite it when indexed. Relationship lists are combined from Crossref, OpenAlex, and Semantic Scholar; up to 100 references and 20 citing papers are shown. Each result is grouped by access status: direct PDF available, record found in an open metadata source, or Google Scholar follow-up needed. A metadata record does not guarantee that its full text is free to download.
 
-The AI tools support OpenAI, Google Gemini and Anthropic Claude with a user-supplied API key. Features include summaries, citation intent, 3–5 reference synthesis, graph themes, paper Q&A and optional bibliography extraction. See [AI_ARCHITECTURE.md](AI_ARCHITECTURE.md) for endpoints, implementation order, evidence limits and privacy behavior.
+The AI tools support OpenAI, Google Gemini, Anthropic Claude and MaxPlus AI (OpenAI-compatible) with a user-supplied API key. Features include summaries, citation intent, 3–5 reference synthesis, graph themes, paper Q&A and optional bibliography extraction. See [AI_ARCHITECTURE.md](AI_ARCHITECTURE.md) for endpoints, implementation order, evidence limits and privacy behavior.
 
 ## Run locally
 
@@ -42,3 +42,5 @@ Crossref's polite-pool contact is optional. Set `PAPERREF_CONTACT_EMAIL` before 
 - `resolver.py` — Crossref/OpenAlex/Semantic Scholar lookup and DOI metadata retrieval
 - `static/index.html` — responsive interface, interactive graph, and CSV/JSON export
 - `requirements.txt` — Python dependencies
+
+For MaxPlus, choose **MaxPlus AI**, enter its own API key and use the default base URL `https://api.maxplus-ai.cc/v1` or the documented path on the same host. Load/select a model before invoking an AI tool. Live MaxPlus compatibility remains unverified; see AI_ARCHITECTURE.md.
