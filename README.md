@@ -4,7 +4,7 @@ PaperRef Finder accepts a research PDF or DOI. For PDFs it extracts numbered or 
 
 DOI lookup displays the paper and its bibliography, plus papers that cite it when indexed. Relationship lists are combined from Crossref, OpenAlex, and Semantic Scholar; up to 100 references and 20 citing papers are shown. Each result is grouped by access status: direct PDF available, record found in an open metadata source, or Google Scholar follow-up needed. A metadata record does not guarantee that its full text is free to download.
 
-The reference graph is draggable and zoomable. AI summaries can be requested for a PDF or DOI abstract using the user's own OpenAI API key. The key is sent only for that request and is not saved by the app. A PDF's extracted body text is sent to OpenAI only after the user presses the summary button; DOI mode retrieves an abstract from Crossref/OpenAlex and sends that abstract to OpenAI. OpenAI usage is billed to the user's account.
+The AI tools support OpenAI, Google Gemini and Anthropic Claude with a user-supplied API key. Features include summaries, citation intent, 3–5 reference synthesis, graph themes, paper Q&A and optional bibliography extraction. See [AI_ARCHITECTURE.md](AI_ARCHITECTURE.md) for endpoints, implementation order, evidence limits and privacy behavior.
 
 ## Run locally
 
@@ -23,7 +23,7 @@ Open <http://127.0.0.1:8000>. The health endpoint is <http://127.0.0.1:8000/heal
 
 1. Enter a DOI or DOI URL to find a paper and its References/Cited by lists, or select/drag in a research PDF up to 50 MB. PDF reference extraction works best with selectable text and a References, Bibliography, Works Cited, or Literature Cited section near the end.
 2. Click **ค้นหารายการอ้างอิง** for a PDF or **ค้นหาด้วย DOI** for one DOI. Use the access-status chips to filter for direct PDFs, records in open metadata sources, or items that need a Google Scholar search. Bibliography lines are queried as complete citations when their title is missing or uncertain.
-3. To request an AI summary, select a PDF or enter a DOI, enter your own OpenAI API key, and click **สรุปงานวิจัย**. The key is cleared from the page after the request. DOI summaries require an abstract indexed in Crossref or OpenAlex; if none is available, provide the PDF instead. You can choose another OpenAI model in the model field.
+3. Select your AI provider, edit its model if needed and enter your API key. Choose a PDF or DOI, then invoke a tool. Select 3–5 references for synthesis. Keys stay only in the page password field until cleared, provider changes or the page closes; usage is billed to your provider account.
 4. Use the graph to jump to a reference. Drag nodes to rearrange them, drag the background to pan, and use the wheel or zoom buttons to change scale. The References and Citation tabs separate the bibliography from PDF-linked citations.
 5. Search the result list, then export results as CSV or JSON.
 

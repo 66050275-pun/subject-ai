@@ -789,3 +789,23 @@ async def lookup_doi_relationships(value: str) -> dict:
             ) if count
         ],
     }
+
+
+async def enrich_ai_references(items: list[dict]) -> list[dict]:
+    """Fetch abstracts with bounded concurrency; missing metadata stays explicit."""
+    semaphore = asyncio.Semaphore(6)
+    async def enrich(item):
+        result = dict(item)
+        result['abstract'] = ''
+        if item.get('doi'):
+            try:
+                async with semaphore:
+                    material = await fetch_doi_summary_material(item['doi'])
+                result['abstract'] = (material.get('abstract') or '')[:2500]
+                result['title'] = material.get('title') or result.get('title')
+                result['authors'] = material.get('authors') or []
+            except (ValueError, httpx.HTTPError):
+                pass
+        result['evidence_level'] = 'abstract' if result['abstract'] else 'title/metadata only'
+        return result
+    return await asyncio.gather(*(enrich(item) for item in items))

@@ -361,3 +361,67 @@ def extract_citation_counts(
         document.close()
 
     return has_bibliography_links, dict(counts)
+
+
+def extract_bibliography_text(pdf_bytes: bytes, max_chars: int = 36000) -> str:
+    """Bounded bibliography candidate for an explicit, paid AI fallback."""
+    pages = _extract_text(pdf_bytes, sort=False)
+    try:
+        text = _reference_section(pages)
+    except ExtractionError:
+        text = '\n'.join(pages[max(0, len(pages) - max(2, len(pages) // 3)):])
+    if len(text) > max_chars:
+        raise ExtractionError('บรรณานุกรมยาวเกินขีดจำกัด AI กรุณาแนบ PDF เฉพาะหน้าบรรณานุกรม')
+    return text
+
+
+def extract_citation_contexts(pdf_bytes: bytes, references: list[Reference]) -> dict[int, list[dict]]:
+    """Best-effort textual markers and internal-link positions; never bibliography text."""
+    pages = _extract_text(pdf_bytes)
+    contexts = {ref.number or i: [] for i, ref in enumerate(references, 1)}
+    body_pages = []
+    for page in pages:
+        lines = page.splitlines()
+        heading = next((i for i, line in enumerate(lines) if _HEADING_RE.fullmatch(' '.join(line.split()))), None)
+        body_pages.append(' '.join(lines[:heading] if heading is not None else lines))
+        if heading is not None:
+            break
+    def add(number, page, text, start, end, method):
+        values = contexts.get(number)
+        if values is None or len(values) >= 3:
+            return
+        snippet = text[max(0, start - 250):min(len(text), end + 250)].strip()
+        if snippet and not any(v['text'] == snippet for v in values):
+            values.append({'page': page, 'text': snippet, 'method': method})
+    for page_number, text in enumerate(body_pages, 1):
+        for marker in re.finditer(r'\[([\d\s,;–—-]+)\]', text):
+            numbers = set()
+            for part in re.split(r'[,;]', marker.group(1)):
+                bounds = re.findall(r'\d+', part)
+                if len(bounds) == 1:
+                    numbers.add(int(bounds[0]))
+                elif len(bounds) == 2 and 0 <= int(bounds[1]) - int(bounds[0]) <= 100:
+                    numbers.update(range(int(bounds[0]), int(bounds[1]) + 1))
+            for number in numbers:
+                add(number, page_number, text, marker.start(), marker.end(), 'numbered-marker')
+        for i, ref in enumerate(references, 1):
+            if ref.number is None and ref.year:
+                author = re.search(r'[A-Za-zÀ-ÖØ-öø-ÿ]{3,}', ref.original_text)
+                if author:
+                    pattern = re.escape(author.group()) + r'[^.;]{0,80}?\b' + re.escape(ref.year) + r'\b'
+                    for marker in re.finditer(pattern, text, re.IGNORECASE):
+                        add(i, page_number, text, marker.start(), marker.end(), 'author-year-heuristic')
+    with fitz.open(stream=pdf_bytes, filetype='pdf') as doc:
+        for page_index, page in enumerate(doc):
+            if page_index >= len(body_pages):
+                break
+            for link in page.get_links():
+                match = _BIB_DEST_RE.search(link.get('nameddest') or '')
+                if match and link.get('from'):
+                    rect = fitz.Rect(link['from'])
+                    rect.x0 = 0; rect.x1 = page.rect.width
+                    rect.y0 = max(0, rect.y0 - 35); rect.y1 = min(page.rect.height, rect.y1 + 35)
+                    text = ' '.join(page.get_text('text', clip=rect).split())
+                    if text and text in body_pages[page_index]:
+                        add(int(match.group(1)), page_index + 1, text, 0, len(text), 'internal-link')
+    return contexts
