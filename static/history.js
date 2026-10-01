@@ -41,7 +41,14 @@
   const message=error=>{status.textContent=error?.name==='QuotaExceededError'?'พื้นที่เก็บข้อมูลเต็ม ประวัติเดิมยังอยู่ ลบหรือ export ประวัติก่อน':(error instanceof Error?error.message:String(error));};
   let db=null,enabled=true,records=[],onRestore=null;
   const selected=new Set();
-  let incognito=false;
+  let incognito=false,storageReady=false,savingPreference=false;
+  function syncPrivacyControls(){
+    toggle.checked=enabled&&!incognito;
+    toggle.disabled=!storageReady||savingPreference||incognito;
+    document.documentElement.toggleAttribute('data-incognito',incognito);
+    if(incognito)document.documentElement.dataset.theme='dark';
+    else delete document.documentElement.dataset.theme;
+  }
   const ready=new Promise(resolve=>{
     try{
       const request=indexedDB.open('paperref-history',1);
@@ -53,7 +60,7 @@
         const tx=db.transaction(['searches','preferences'],'readonly');
         tx.objectStore('searches').getAll().onsuccess=e=>records=e.target.result;
         tx.objectStore('preferences').get('enabled').onsuccess=e=>enabled=e.target.result!==false;
-        tx.oncomplete=()=>{toggle.disabled=false;toggle.checked=enabled;render();resolve(true);};
+        tx.oncomplete=()=>{storageReady=true;syncPrivacyControls();render();resolve(true);};
         tx.onabort=()=>{message('อ่านประวัติไม่สำเร็จ');resolve(false);};
       };
     }catch(_){message('IndexedDB ใช้งานไม่ได้ในเบราว์เซอร์นี้ ยังค้นหาได้ตามปกติ');resolve(false);}
@@ -98,9 +105,9 @@
   }
   toggle.onchange=async()=>{
     const requested=toggle.checked,previous=enabled;enabled=requested;
-    if(!await ready){enabled=previous;return;}toggle.disabled=true;
+    if(!await ready){enabled=previous;syncPrivacyControls();return;}savingPreference=true;syncPrivacyControls();
     try{await new Promise((resolve,reject)=>{const tx=db.transaction('preferences','readwrite');tx.objectStore('preferences').put(requested,'enabled');tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});enabled=requested;status.textContent=enabled?'เปิดบันทึกประวัติแล้ว':'หยุดบันทึกใหม่แล้ว ประวัติเดิมยังอยู่ ลบได้ด้วยปุ่มล้างประวัติ';}
-    catch(error){enabled=previous;toggle.checked=enabled;message(error);}finally{toggle.disabled=false;}
+    catch(error){enabled=previous;message(error);}finally{savingPreference=false;syncPrivacyControls();}
   };
   document.getElementById('history-clear').onclick=async()=>{if(!confirm('ลบประวัติทั้งหมดในเบราว์เซอร์นี้? ดาวน์โหลดสำรองก่อนหากต้องการเก็บไว้'))return;try{await commit(()=>[]);status.textContent='ล้างประวัติแล้ว';}catch(error){message(error);}};
   document.getElementById('history-export').onclick=()=>{
@@ -130,7 +137,7 @@
   const download=(content,name,type)=>{const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([content],{type}));link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000);};
   function downloadBib(rows){download(window.PaperRefWorkspace.bibtex(rows),'paperref-references.bib','application/x-bibtex');}
   document.getElementById('history-search').oninput=render;
-  document.getElementById('history-incognito').onchange=event=>{incognito=event.target.checked;status.textContent=incognito?'โหมดไม่บันทึก: ไม่เพิ่มหรืออัปเดตประวัติจนกว่าจะปิดโหมดนี้':'ปิดโหมดไม่บันทึกแล้ว';};
+  document.getElementById('history-incognito').onchange=event=>{incognito=event.target.checked;syncPrivacyControls();status.textContent=incognito?'โหมดไม่บันทึก: ไม่เพิ่มหรืออัปเดตประวัติจนกว่าจะปิดโหมดนี้':'ปิดโหมดไม่บันทึกแล้ว';};
   document.getElementById('workspace-bib').onclick=()=>{const rows=records.filter(r=>selected.has(r.id));if(!rows.length){status.textContent='เลือกอย่างน้อย 1 เปเปอร์';return;}downloadBib(rows);};
   document.getElementById('workspace-shared').onclick=()=>{
     const rows=window.PaperRefWorkspace.uniqueSessions(records.filter(r=>selected.has(r.id))),output=document.getElementById('workspace-output');output.replaceChildren();

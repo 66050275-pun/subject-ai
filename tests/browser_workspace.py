@@ -31,11 +31,25 @@ try:
   with page.expect_download() as download:f.locator('#workspace-bib').click()
   bib=Path(download.value.path()).read_text();assert bib.count('10.1000/shared')==1;assert '@misc{' in bib
   f.locator('#workspace-compare').click();f.locator('#workspace-output').filter(has_text='Mock cross-paper comparison').wait_for(timeout=30000)
-  f.locator('#history-incognito').check();f.locator('#settings-close').click();f.locator('#settings-drawer').wait_for(state='hidden')
+  f.locator('#history-incognito').check()
+  assert not f.locator('#history-enabled').is_checked()
+  assert f.locator('#history-enabled').is_disabled()
+  assert f.locator('html').get_attribute('data-theme')=='dark'
+  assert f.locator('body').evaluate('el=>getComputedStyle(el).backgroundColor')=='rgb(16, 25, 20)'
+  assert f.locator('.preference-card').first.evaluate('el=>getComputedStyle(el).backgroundColor')=='rgb(27, 41, 32)'
+  f.locator('#settings-close').click();f.locator('#settings-drawer').wait_for(state='hidden')
   f.locator('#doi-input').fill('10.1000/three');f.locator('#doi-button').click();f.locator('#dataset-doi[aria-pressed=true]').wait_for(timeout=30000)
   f.locator('.sidebar-settings').click();f.locator('[data-settings-section=history]').click();assert f.locator('#history-list .history-card').count()==2
   f.locator('#history-list .history-card').filter(has_text='Study Two').get_by_role('button',name='เปิดผลเดิม').click();f.locator('#settings-drawer').wait_for(state='hidden');assert f.locator('#summary-output').inner_text()=='Mock shared summary';assert f.locator('#graph-zoom-label').inner_text()=='120%'
   page.set_viewport_size({'width':390,'height':844});f.locator('.sidebar-settings').click();f.locator('[data-settings-section=history]').click();assert f.locator('#settings-drawer').evaluate('el=>el.scrollWidth<=el.clientWidth');page.screenshot(path=str(Path(tempfile.gettempdir())/'paperref-workspace-phone.png'))
+  f.locator('#history-incognito').uncheck()
+  assert f.locator('#history-enabled').is_checked()
+  assert not f.locator('#history-enabled').is_disabled()
+  assert f.locator('html').get_attribute('data-theme') is None
+  f.locator('#history-enabled').uncheck();page.wait_for_timeout(200)
+  f.locator('#history-incognito').check();f.locator('#history-incognito').uncheck()
+  assert not f.locator('#history-enabled').is_checked()
+  assert not f.locator('#history-enabled').is_disabled()
   assert not errors,errors;browser.close()
  print('PASS: summary/graph persisted, author/year search, shared references, deduplicated BibTeX, comparison API bridge, incognito, offline restore, mobile')
 finally:server.terminate();server.wait(timeout=10)
