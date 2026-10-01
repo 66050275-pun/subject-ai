@@ -16,7 +16,7 @@ run under FastAPI and Streamlit.
 - Search history stores whitelisted reference metadata and links in IndexedDB on
   this browser origin. Recording is initially enabled; users can disable new
   recording, delete individual entries or clear everything. It excludes API keys,
-  PDFs, citation context excerpts and AI/chat answers. Opening a PDF history result
+  PDFs, citation context excerpts and Q&A/chat history. It now includes saved AI summaries/synthesis, graph coordinates/themes and source metadata. History is not encrypted by the app; use Incognito for sensitive work. Opening a PDF history result
   restores its cards/graph; full-text AI requires uploading the original again.
   Limit: newest 50 results or 8 MB, with a maximum 1 MB per result. Older entries
   are removed when full; storage denial/quota failures do not stop searches.
@@ -73,3 +73,5 @@ npm exec --yes --package=tailwindcss@3.4.17 -- tailwindcss \
 Browser verification uses mocked AI/academic APIs and covers settings on desktop,
 phone and tablet, storage opt-in/revocation, reload without key persistence, focus
 containment and blocked untrusted scripts on both frontend hosts.
+
+Multipart uploads up to the allowed limit remain in RAM: a 64 MB request-body cap sits below the configured Starlette spool threshold, including compatibility with older parser attribute names. The existing 50 MB PDF limit remains. No user-history/PDF disk storage is used. See HISTORY_WORKSPACE.md for comparative AI evidence limits.

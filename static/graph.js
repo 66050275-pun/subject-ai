@@ -21,7 +21,8 @@
     return [first, second + (rest ? '…' : '')];
   };
   window.PaperRefGraph = {
-    render({svg, items, sourceName, relationText, themes, onOpen, onSelect, isSelected, allowSelection}) {
+    exportState: svg=>svg?.paperrefState?.()||null,
+    render({svg, items, sourceName, relationText, themes, onOpen, onSelect, isSelected, allowSelection, state, onChange}) {
       const grouped = new Map();
       const access = {
         pdf_available: {name: 'ดาวน์โหลด PDF ได้', color: '#628646'},
@@ -54,6 +55,8 @@
         group.items.forEach((item, row) => nodes.push({kind: 'paper', x: hub.x + (row % columns - (columns - 1) / 2) * 270, y: 340 + Math.floor(row / columns) * 100,
           width: 248, height: 80, color: group.color, item, parent: hub}));
       });
+      const nodeId=n=>n.kind==='paper'?'paper:'+n.item.reference_number:n.kind==='group'?'group:'+n.group.name:'root';
+      for(const node of nodes){const saved=state?.nodes?.find(s=>s.id===nodeId(node));if(saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.y)){node.x=saved.x;node.y=saved.y;}}
       const legend = document.getElementById('network-legend');
       legend.replaceChildren(); legend.classList.remove('hidden');
       groups.forEach(group => {
@@ -64,6 +67,8 @@
       });
       document.getElementById('graph-inspector').classList.add('hidden');
       let zoom = 1, offsetX = 0, offsetY = 0, active = null, interaction = null;
+      if(state){zoom=state.zoom||1;offsetX=state.offsetX||0;offsetY=state.offsetY||0;}
+      svg.paperrefState=()=>({zoom,offsetX,offsetY,nodes:nodes.map(n=>({id:nodeId(n),x:n.x,y:n.y}))});
       const update = () => {
         world.setAttribute('transform', `translate(${offsetX} ${offsetY}) scale(${zoom})`);
         for (const node of nodes) {
@@ -170,23 +175,23 @@
       const end = event => {
         if (!interaction || interaction.id !== event.pointerId) return;
         if (interaction.node) interaction.node.wasDragged = interaction.moved;
-        interaction = null;
+        interaction = null; onChange?.();
       };
       svg.onpointerup = end; svg.onpointercancel = end;
       const zoomAt = (factor, p = {x: width / 2, y: height / 2}) => {
         const q = toWorld(p); zoom = Math.max(.08, Math.min(5, zoom * factor));
         offsetX = p.x - q.x * zoom; offsetY = p.y - q.y * zoom; update();
       };
-      svg.onwheel = event => { event.preventDefault(); zoomAt(event.deltaY < 0 ? 1.12 : .89, point(event)); };
-      document.getElementById('graph-zoom-in').onclick = () => zoomAt(1.2);
-      document.getElementById('graph-zoom-out').onclick = () => zoomAt(1 / 1.2);
+      svg.onwheel = event => { event.preventDefault(); zoomAt(event.deltaY < 0 ? 1.12 : .89, point(event));onChange?.(); };
+      document.getElementById('graph-zoom-in').onclick = () => {zoomAt(1.2);onChange?.();};
+      document.getElementById('graph-zoom-out').onclick = () => {zoomAt(1 / 1.2);onChange?.();};
       document.getElementById('graph-fit').onclick = () => {
         const maxY = Math.max(...nodes.map(n => n.y + n.height / 2)) + 30;
-        zoom = Math.min(1, (height - 40) / maxY); offsetX = width / 2 * (1 - zoom); offsetY = 20; update();
+        zoom = Math.min(1, (height - 40) / maxY); offsetX = width / 2 * (1 - zoom); offsetY = 20; update();onChange?.();
       };
       document.getElementById('graph-reset').onclick = () => {
         // Rebuild from metadata, discarding manual positions.
-        window.PaperRefGraph.render({svg, items, sourceName, relationText, themes, onOpen, onSelect, isSelected, allowSelection});
+        window.PaperRefGraph.render({svg, items, sourceName, relationText, themes, onOpen, onSelect, isSelected, allowSelection, onChange});onChange?.();
       };
       update();
     }

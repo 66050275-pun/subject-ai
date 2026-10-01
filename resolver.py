@@ -202,6 +202,8 @@ async def _openalex_lookup(client: httpx.AsyncClient, reference: Reference) -> d
         "pdf_locations": locations,
         "oa_records": openalex_records(work),
         "year": str(work.get("publication_year") or "") or None,
+        "authors": [(entry.get('author') or {}).get('display_name', '') for entry in (work.get('authorships') or []) if isinstance(entry, dict) and isinstance(entry.get('author'), dict)][:40],
+        "abstract": _openalex_abstract(work),
     }
 
 
@@ -228,13 +230,15 @@ async def _openalex_by_doi(client: httpx.AsyncClient, doi: str) -> dict | None:
         "pdf_locations": locations,
         "oa_records": openalex_records(work),
         "year": str(work.get("publication_year") or "") or None,
+        "authors": [(entry.get('author') or {}).get('display_name', '') for entry in (work.get('authorships') or []) if isinstance(entry, dict) and isinstance(entry.get('author'), dict)][:40],
+        "abstract": _openalex_abstract(work),
     }
 
 
 async def _semantic_scholar_by_doi(client: httpx.AsyncClient, doi: str) -> dict | None:
     response = await _academic_get(client,
         f"{SEMANTIC_SCHOLAR_URL}/{quote('DOI:' + doi, safe=':')}",
-        params={"fields": "title,openAccessPdf,externalIds,url,paperId,year"},
+        params={"fields": "title,openAccessPdf,externalIds,url,paperId,year,authors,abstract"},
     )
     if response.status_code == 404:
         return None
@@ -252,6 +256,8 @@ async def _semantic_scholar_by_doi(client: httpx.AsyncClient, doi: str) -> dict 
         "oa_pdf_url": _safe_http_url(pdf.get("url")),
         "arxiv_id": (paper.get('externalIds') or {}).get('ArXiv'),
         "year": str(paper.get("year") or "") or None,
+        "authors": [author.get('name', '') for author in (paper.get('authors') or []) if isinstance(author, dict)][:40],
+        "abstract": str(paper.get('abstract') or ''),
     }
 
 
@@ -265,7 +271,7 @@ async def _semantic_scholar_lookup(
         params={
             "query": reference.title,
             "limit": 5,
-            "fields": "title,openAccessPdf,externalIds,url,paperId,year",
+            "fields": "title,openAccessPdf,externalIds,url,paperId,year,authors,abstract",
         },
     )
     response.raise_for_status()
@@ -290,6 +296,8 @@ async def _semantic_scholar_lookup(
         "oa_pdf_url": _safe_http_url(pdf.get("url")),
         "arxiv_id": (paper.get('externalIds') or {}).get('ArXiv'),
         "year": str(paper.get("year") or "") or None,
+        "authors": [author.get('name', '') for author in (paper.get('authors') or []) if isinstance(author, dict)][:40],
+        "abstract": str(paper.get('abstract') or ''),
     }
 
 
@@ -310,6 +318,9 @@ def _new_result(reference: Reference) -> dict:
 
 
 def _add_source(result: dict, source_name: str, metadata: dict) -> None:
+    for field in ('authors', 'abstract', 'journal'):
+        if metadata.get(field) and not result.get(field):
+            result[field] = metadata[field]
     title = metadata.get("title")
     doi = metadata.get("doi")
     paper_url = _safe_http_url(metadata.get("paper_url"))
@@ -377,6 +388,9 @@ async def _resolve_one(
                 "paper_url": crossref_url,
                 "record_url": crossref_url,
                 "year": _crossref_year(crossref),
+                "authors": [" ".join(str(a.get(k) or '') for k in ('given', 'family')).strip() for a in (crossref.get('author') or []) if isinstance(a, dict)][:40],
+                "abstract": _crossref_abstract(crossref),
+                "journal": (crossref.get('container-title') or [''])[0],
             })
 
         effective_doi = result.get('doi') or reference.doi
@@ -464,6 +478,9 @@ async def lookup_doi(value: str) -> dict:
                 "paper_url": crossref_url,
                 "record_url": crossref_url,
                 "year": _crossref_year(crossref),
+                "authors": [" ".join(str(a.get(k) or '') for k in ('given', 'family')).strip() for a in (crossref.get('author') or []) if isinstance(a, dict)][:40],
+                "abstract": _crossref_abstract(crossref),
+                "journal": (crossref.get('container-title') or [''])[0],
             })
         try:
             openalex_by_doi = await _openalex_by_doi(client, doi)

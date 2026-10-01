@@ -18,7 +18,7 @@ from main import app
 MAX_UPLOAD = 50 * 1024 * 1024
 ROUTES = {
     'GET': re.compile(r'^/api/ai/(providers|gemini-models|maxplus-models)$'),
-    'POST': re.compile(r'^/api/(references|doi|summarize|open-access/search|ai/(intents|synthesis|clusters|qa|extract-references))$'),
+    'POST': re.compile(r'^/api/(references|doi|summarize|open-access/search|ai/(intents|synthesis|clusters|qa|compare|extract-references))$'),
 }
 
 

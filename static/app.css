@@ -1619,3 +1619,6 @@ label:has(>#search-input)>svg {
 .history-card {padding:16px;border:1px solid var(--line);background:white;border-radius:14px;margin-top:12px}
 .history-card h4 {font-size:13px;overflow-wrap:anywhere}.history-card p,.history-empty {font-size:11px;color:var(--muted);line-height:1.8;margin-top:7px}
 .history-card>div {display:flex;justify-content:space-between;margin-top:12px}.history-card button {font-size:11px;border:0;background:transparent;color:var(--ink);cursor:pointer}
+
+.history-search-label {display:block;font-size:12px;margin-top:16px}.history-search-label input {display:block;width:100%;margin-top:8px}
+.history-access {display:inline-block;font-size:10px;color:var(--violet);margin:0 0 6px 8px}.workspace-actions {padding:16px;border:1px solid var(--line);background:white;border-radius:14px;margin-top:14px}.workspace-actions button {border:1px solid var(--line);background:var(--paper);border-radius:9px;padding:8px;font-size:11px;margin:6px 4px 0 0}.workspace-actions p {font-size:11px;color:var(--muted);line-height:1.8}.workspace-output {white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.8;max-height:500px;overflow:auto;margin-top:12px}.shared-reference {border-left:4px solid var(--violet)}

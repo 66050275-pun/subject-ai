@@ -464,3 +464,17 @@ def split_bibliography_batches(text: str, max_chars: int = 6000, max_entries: in
     if current:
         chunks.append('\n'.join(current))
     return chunks
+
+
+def extract_source_metadata(pdf_bytes: bytes) -> dict:
+    """Read explicit PDF metadata in memory; unknown authors/year remain unknown."""
+    try:
+        with fitz.open(stream=pdf_bytes, filetype='pdf') as document:
+            metadata = document.metadata or {}
+            title = (metadata.get('title') or '').strip()
+            if title.lower() in ('untitled', 'microsoft word'):
+                title = ''
+            authors = [name.strip() for name in re.split(r';', metadata.get('author') or '') if name.strip()]
+            return {'title': title[:1200], 'authors': authors[:40], 'year': '', 'doi': None}
+    except (ValueError, RuntimeError):
+        return {'title': '', 'authors': [], 'year': '', 'doi': None}

@@ -36,3 +36,21 @@ class SecurityHeaders:
                 message = {**message, 'headers': headers}
             await send(message)
         await self.app(scope, receive, secured_send)
+
+
+class MemoryOnlyUploads:
+    """Limit API bodies below multipart spooling threshold, including chunked uploads."""
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        from fastapi import HTTPException
+        total = 0
+        async def bounded_receive():
+            nonlocal total
+            message = await receive()
+            total += len(message.get('body', b''))
+            if total > 64 * 1024 * 1024:
+                raise HTTPException(413, 'Request exceeds memory upload limit')
+            return message
+        await self.app(scope, bounded_receive if scope.get('path', '').startswith('/api/') else receive, send)

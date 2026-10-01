@@ -208,12 +208,13 @@
         <div class="preference-card"><label><input id="remember-ai-preferences" type="checkbox"> จำ provider และโมเดลบนอุปกรณ์นี้</label><p>เป็นตัวเลือก ใช้ local storage เก็บเฉพาะการตั้งค่า ไม่เก็บ API key, PDF หรือบทสนทนา ปิดเพื่อถอนความยินยอมและลบค่าที่จำไว้</p><p id="preferences-status" role="status"></p></div>
       </section>
       <section id="settings-workspace" class="drawer-section hidden"><div class="drawer-intro"><h3>ไปยังสิ่งที่ต้องการ</h3><p>เครื่องมือทั้งหมดในพื้นที่เดียว</p></div><div class="drawer-shortcuts"><button type="button" data-jump="paper-input">↑ PDF และ DOI <span>เลือกงานวิจัย · สกัดด้วยโค้ดหรือ AI →</span></button><button type="button" data-jump="results-section">▤ รายการอ้างอิงและกราฟ <span>ค้นหา PDF · กรองผล · ดาวน์โหลดรายการ →</span></button><button type="button" data-jump="ai-workspace">✦ AI Research Lab <span>สรุป · วิเคราะห์ citation · สังเคราะห์ · Q&A →</span></button></div><div class="privacy-card"><h4>ใช้บนอุปกรณ์ร่วมกัน</h4><p>ล้าง API key และดาวน์โหลดผลก่อนปิดแท็บ การรีเฟรชหน้าอาจทำให้ไฟล์ แช็ต และผลที่ไม่ได้บันทึกหาย เปิดผลที่บันทึกแล้วได้จากหมวดประวัติ</p><button type="button" data-clear-key class="text-button">ล้าง API key ตอนนี้</button><p id="key-clear-status" role="status"></p></div></section>
-      <section id="settings-history" class="drawer-section hidden"><div class="drawer-intro"><h3>กลับไปดูสิ่งที่ค้นพบ</h3><p>เก็บผลใน IndexedDB ของเบราว์เซอร์นี้ ไม่ซิงก์คลาวด์ ไม่เก็บ API key, PDF, แช็ต หรือข้อความบริบทในเนื้อหา</p></div><div class="preference-card"><label><input id="history-enabled" type="checkbox" checked disabled> บันทึกประวัติการค้นหาในอุปกรณ์นี้</label><p>ปิดเพื่อหยุดบันทึกใหม่ ประวัติเดิมยังอยู่ เก็บล่าสุดสูงสุด 50 รายการ / 8 MB เมื่อเต็มจะนำรายการเก่าสุดออก ผู้ที่ใช้เบราว์เซอร์เดียวกันอาจเปิดดูได้</p></div><div class="history-toolbar"><button id="history-export" type="button" disabled>ดาวน์โหลดสำรอง</button><label class="history-import-label">นำเข้า JSON<input id="history-import" type="file" accept=".json,application/json" class="sr-only"></label><button id="history-clear" type="button" disabled>ล้างประวัติ</button></div><p id="history-status" role="status"></p><p id="history-count" class="small-label"></p><div id="history-list"></div><div class="privacy-card"><h4>เก็บเฉพาะผลการค้นหา</h4><p>เปิดผลเดิมได้โดยไม่ค้นใหม่ แต่การวิเคราะห์ AI ที่ต้องอ่าน PDF ต้องแนบไฟล์อีกครั้ง การล้างข้อมูลเว็บไซต์หรือโหมดส่วนตัวอาจทำให้ประวัติหาย ดาวน์โหลดสำรองไว้หากต้องการย้ายเครื่องหรือย้าย URL แอป</p></div></section>
+      <section id="settings-history" class="drawer-section hidden"><div class="drawer-intro"><h3>กลับไปดูสิ่งที่ค้นพบ</h3><p>เก็บผลใน IndexedDB ของเบราว์เซอร์นี้ ไม่ซิงก์คลาวด์ ไม่เก็บ API key หรือ PDF เก็บ metadata สรุป AI และตำแหน่งกราฟในอุปกรณ์นี้</p></div><div class="preference-card"><label><input id="history-enabled" type="checkbox" checked disabled> บันทึกประวัติการค้นหาในอุปกรณ์นี้</label><p>ปิดเพื่อหยุดบันทึกใหม่ ประวัติเดิมยังอยู่ เก็บล่าสุดสูงสุด 50 รายการ / 8 MB เมื่อเต็มจะนำรายการเก่าสุดออก ผู้ที่ใช้เบราว์เซอร์เดียวกันอาจเปิดดูได้</p></div><div class="preference-card"><label><input id="history-incognito" type="checkbox"> โหมดไม่บันทึก (Incognito / Ephemeral)</label><p>ไม่เพิ่มหรืออัปเดตประวัติในแท็บนี้ เปิด/ปิดได้ตลอด ประวัติเดิมยังอยู่</p></div><label class="history-search-label">ค้นหาชื่อเรื่อง ผู้แต่ง หรือปี<input id="history-search" type="search" placeholder="ค้นหาในประวัติ…"></label><div class="workspace-actions"><p id="workspace-selection">เลือก 0 เปเปอร์</p><button id="workspace-shared" type="button">หาอ้างอิงร่วม</button><button id="workspace-bib" type="button">ส่งออก .bib ที่เลือก</button><button id="workspace-compare" type="button">เปรียบเทียบ AI (2–3 เรื่อง)</button><p>ส่ง metadata/abstract/สรุปที่บันทึกของเปเปอร์ที่เลือกไปยัง AI เมื่อกดเปรียบเทียบ คิดค่า API ตามบัญชีของคุณ</p><div id="workspace-progress" class="operation-progress ai-progress hidden"></div><div id="workspace-output" class="workspace-output" role="status"></div></div><div class="history-toolbar"><button id="history-export" type="button" disabled>ดาวน์โหลดสำรอง</button><label class="history-import-label">นำเข้า JSON<input id="history-import" type="file" accept=".json,application/json" class="sr-only"></label><button id="history-clear" type="button" disabled>ล้างประวัติ</button></div><p id="history-status" role="status"></p><p id="history-count" class="small-label"></p><div id="history-list"></div><div class="privacy-card"><h4>เก็บเฉพาะผลการค้นหา</h4><p>เปิดผลเดิมได้โดยไม่ค้นใหม่ แต่การวิเคราะห์ AI ที่ต้องอ่าน PDF ต้องแนบไฟล์อีกครั้ง การล้างข้อมูลเว็บไซต์หรือโหมดส่วนตัวอาจทำให้ประวัติหาย ดาวน์โหลดสำรองไว้หากต้องการย้ายเครื่องหรือย้าย URL แอป</p></div></section>
       <section id="settings-privacy" class="drawer-section hidden"><div class="drawer-intro"><h3>ข้อมูลไปที่ไหนบ้าง?</h3><p>เลือกใช้แต่ละฟีเจอร์ได้ โดยไม่ต้องเปิดการจำค่าตั้งต้น</p></div><div class="privacy-card"><h4>PDF และการค้นหา</h4><p>PDF ผ่านเซิร์ฟเวอร์เพื่อสกัดข้อความ การค้นอ้างอิงส่ง DOI ชื่อเรื่อง หรือ metadata ไปยังฐานข้อมูลวิชาการที่ใช้ ฟีเจอร์ AI ส่งบริบทที่จำเป็นและคีย์ผ่านเซิร์ฟเวอร์ไปยัง provider ที่เลือก</p></div><div class="privacy-card"><h4>API key และผลการทำงาน</h4><p>แอปไม่บันทึกคีย์ PDF หรือแช็ตลง storage ของเบราว์เซอร์หรือไฟล์ถาวรของแอป ประวัติรายการอ้างอิงเก็บใน IndexedDB บนอุปกรณ์นี้เมื่อเปิดบันทึก และลบได้ในหมวดประวัติ ข้อมูลคำขออยู่ในหน่วยความจำระหว่างประมวลผล นโยบายเก็บข้อมูลของผู้ให้บริการ AI และผู้ให้บริการโฮสต์อาจแตกต่างกัน</p></div><div class="privacy-card"><h4>คุกกี้และบริการภายนอก</h4><p>แอปไม่ตั้งคุกกี้โฆษณาหรือติดตาม Streamlit อาจใช้คุกกี้ที่จำเป็นสำหรับความปลอดภัยและการเชื่อมต่อ ฟอนต์โหลดจาก Google Fonts และลิงก์บทความเปิดเว็บไซต์ภายนอกซึ่งมีนโยบายของตนเอง</p><p>การจำ provider/โมเดลเป็นตัวเลือกที่ปิดไว้ก่อน และถอนโดยปิดสวิตช์ในหมวดเชื่อมต่อ AI ได้ทุกเมื่อ</p></div><div class="privacy-card"><h4>ก่อนส่งข้อมูล</h4><p>เลือก provider ที่คุณยอมรับนโยบายข้อมูล และหลีกเลี่ยงการส่งเอกสารที่มีข้อมูลส่วนบุคคลหรือข้อมูลที่คุณไม่มีสิทธิ์แชร์</p></div></section>
     </div><div class="drawer-foot"><span class="status-dot"></span> Your keys. Your choices.</div>
   </dialog>
   <script src="/static/progress.js"></script>
   <script src="/static/settings.js"></script>
+  <script src="/static/workspace.js"></script>
   <script src="/static/history.js"></script>
   <script src="/static/graph.js"></script>
   <script>
@@ -349,10 +350,14 @@
       }
       function displayPayload(payload, kind = (payload.mode === 'doi' ? 'doi' : 'code'), restoring = false, fromHistory = false) {
         saveDataset();
-        if (!restoring) datasets.set(kind, {payload, selected: new Set(), colors: new Map(), history: [], chat: '', analysis: '', file: kind === 'doi' ? null : selectedFile, doi: kind === 'doi' ? (payload.source_paper?.doi || document.getElementById('doi-input').value.trim()) : ''});
+        if (!restoring) datasets.set(kind, {payload, selected: new Set(), colors: new Map((payload.workspace?.themes||[]).map(t=>[t.id,{name:t.name,color:t.color}])), history: [], chat: '', analysis: '', file: kind === 'doi' ? null : selectedFile, doi: kind === 'doi' ? (payload.source_paper?.doi || document.getElementById('doi-input').value.trim()) : ''});
         if (!restoring && !fromHistory) datasets.get(kind).historyId = window.PaperRefHistory.save(payload, kind);
         activeDataset = kind;
         const record = datasets.get(kind);
+        const savedSummary=payload.workspace?.summary||'';
+        document.getElementById('summary-output').textContent=savedSummary;
+        document.getElementById('summary-output').classList.toggle('hidden',!savedSummary);
+        record.analysis=payload.workspace?.analysis||record.analysis;
         document.getElementById('oa-status').textContent = record.oa_status || 'พบลิงก์จากฐานข้อมูลไม่ได้รับรองว่าดาวน์โหลดได้จริงทุกลิงก์ · มีป้ายแยกฉบับผู้เขียนและ preprint';
         selectedPapers.clear(); for (const id of record.selected) selectedPapers.add(id);
         clusterColors = new Map(record.colors); chatHistory = [...record.history];
@@ -414,6 +419,16 @@
         if (!restoring) resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
+      function persistWorkspace() {
+        const kind=activeDataset;const record=datasets.get(kind);if(!record)return;
+        record.payload.workspace ||= {graphs:{}};
+        record.payload.workspace.graphs ||= {};
+        record.payload.workspace.themes=[...clusterColors].map(([id,theme])=>({id,...theme}));
+        record.payload.workspace.graphs[currentView]=window.PaperRefGraph.exportState(document.getElementById('citation-graph'));
+        clearTimeout(record.persistTimer);
+        if(window.PaperRefHistory.isEphemeral())return;
+        record.persistTimer=setTimeout(()=>record.historyId?.then(id=>{if(id)window.PaperRefHistory.saveSession(record.payload, kind,id);}),300);
+      }
       window.PaperRefHistory.onRestore((payload, kind, historyId) => {
         if (aiBusy || codeBusy || doiBusy || oaController) { document.getElementById('history-status').textContent = 'รอการประมวลผลปัจจุบันเสร็จก่อนเปิดประวัติ'; return false; }
         resetDatasets(); selectedFile = null; activeFile = null; fileInput.value = ''; analyzeButton.disabled = true;
@@ -626,7 +641,7 @@
       document.getElementById('summary-button').onclick = async () => {
         const output = document.getElementById('summary-output');
         output.classList.remove('hidden'); output.textContent = 'กำลังสรุป…';
-        try { const p = await callAI('summary'); output.textContent = `${p.source} · ${p.provider} · ${p.model}\n\n${p.summary}`; }
+        try { const p = await callAI('summary'); const record=datasets.get(activeDataset);if(record){record.payload.workspace ||= {graphs:{}};record.payload.workspace.summary=String(p.summary).slice(0,12000);persistWorkspace();} output.textContent = `${p.source} · ${p.provider} · ${p.model}\n\n${p.summary}`; }
         catch (e) { output.textContent = e.message; }
       };
       document.querySelectorAll('[data-ai]').forEach(button => button.onclick = async () => {
@@ -635,6 +650,7 @@
         try {
           const feature = button.dataset.ai;
           const p = await callAI(feature);
+          const workspaceRecord=datasets.get(activeDataset);if(workspaceRecord&&feature==='synthesis'){workspaceRecord.payload.workspace ||= {graphs:{}};workspaceRecord.payload.workspace.analysis=String(p.synthesis).slice(0,12000);persistWorkspace();}
           if (feature === 'intents') {
             for (const intent of p.intents) { const item = allResults.find(r => r.reference_number === intent.id); if (item) { item.intent = intent.intent; item.intent_reason = intent.reason; item.citation_contexts = p.contexts[String(intent.id)] || []; } }
             renderResults(); output.textContent = 'แสดงเจตนาและบริบทบนการ์ดรายการอ้างอิงแล้ว';
@@ -645,6 +661,7 @@
             setView('references');
             output.textContent = 'จัดสีธีมบนกราฟแล้ว · ธีมเป็นผลวิเคราะห์ AI จากชื่อเรื่องและ abstract ที่พบ';
           } else if (feature === 'extract-references') {
+            p.source_paper ||= datasets.get('code')?.payload.source_paper || null;
             p.filename = selectedFile.name.replace(/\.pdf$/i, '') || 'งานวิจัย';
             displayPayload(p, 'ai'); output.textContent = `สกัดด้วย AI แล้ว ${p.total_references} รายการ${p.extraction_batches ? ' จาก ' + p.extraction_batches + ' ส่วน' : ''} · ผลโค้ดยังอยู่ในแท็บเดิม${p.extraction_warnings?.length ? '\n' + p.extraction_warnings.join('\n') : ''}`;
           } else output.textContent = p.synthesis;
@@ -904,7 +921,7 @@
         document.getElementById('network-summary').textContent = `${sourceName} · ${graphItems.length} ${relationText}`;
         document.getElementById('network-detail').textContent = 'งานต้นทางอยู่ด้านบน · กลุ่มสีเป็นการจัดวางตามสถานะการเข้าถึงหรือธีม AI · เส้นแสดงความสัมพันธ์กับงานต้นทาง ไม่ได้ระบุว่ารายการอ้างอิงอ้างถึงกันเอง';
         window.PaperRefGraph.render({svg: document.getElementById('citation-graph'), items: graphItems,
-          sourceName, relationText, themes: currentView === 'references' ? clusterColors : new Map(),
+          sourceName, relationText, state:datasets.get(activeDataset)?.payload.workspace?.graphs?.[currentView], onChange:persistWorkspace, themes: currentView === 'references' ? clusterColors : new Map(),
           allowSelection: currentView === 'references', isSelected: item => selectedPapers.has(item.reference_number),
           onSelect: item => {
             if (selectedPapers.has(item.reference_number)) selectedPapers.delete(item.reference_number);

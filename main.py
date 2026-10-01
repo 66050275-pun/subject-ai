@@ -8,9 +8,10 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.formparsers import MultiPartParser
 
-from web_security import SecurityHeaders
-from extractor import ExtractionError, extract_citation_counts, extract_citation_contexts, extract_references
+from web_security import SecurityHeaders, MemoryOnlyUploads
+from extractor import extract_source_metadata, ExtractionError, extract_citation_counts, extract_citation_contexts, extract_references
 from ai_features import router as ai_router
 from oa_features import router as oa_router
 from resolver import (
@@ -28,6 +29,10 @@ app = FastAPI(
     description="Extract research references from PDFs and find their paper links.",
     version="2.0.0",
 )
+# Keep allowed multipart uploads in RAM. Bound the whole request before parsing.
+MultiPartParser.spool_max_size = 64 * 1024 * 1024 + 1
+MultiPartParser.max_file_size = MultiPartParser.spool_max_size  # Older Starlette releases
+app.add_middleware(MemoryOnlyUploads)
 app.add_middleware(SecurityHeaders)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(ai_router)
@@ -87,6 +92,7 @@ async def find_references(file: UploadFile = File(...)) -> dict:
 
     return {
         "filename": filename,
+        "source_paper": extract_source_metadata(pdf_bytes),
         "total_references": len(results),
         "direct_links": sum(bool(item["paper_url"]) for item in results),
         "citation_links_available": citation_links_available,

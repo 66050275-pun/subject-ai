@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict');
+const w=require('../static/workspace.js');
+const session=(id,title,refs)=>({id,payload:{filename:title,results:refs}});
+const paper={title:'An important battery method',doi:'10.1000/a',authors:['A & B'],year:'2024'};
+const shared=w.sharedReferences([session('a','One',[paper,paper]),session('b','Two',[{...paper,doi:'https://doi.org/10.1000/A'}])]);
+assert.equal(shared.length,1);assert.equal(shared[0].sessions.length,2);
+assert.equal(w.sharedReferences([session('a','One',[paper]),session('b','One',[paper])]).length,0);
+assert.equal(w.sharedReferences([session('a','One',[paper]),session('b','Two',[{...paper,doi:'10.1000/b'}])]).length,0);
+assert.equal(w.sharedReferences([session('a','One',[paper]),session('b','Two',[{...paper,doi:''}])]).length,1);
+assert.equal((w.bibtex([session('a','One',[paper]),session('b','Two',[paper])]).match(/@misc/g)||[]).length,1);
+assert.ok(w.bibtex([session('a','One',[paper])]).includes('A \\& B'));
+console.log('PASS: identities, overlap counts, conflicting DOIs, fallback titles and BibTeX escaping');
