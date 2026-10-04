@@ -7,6 +7,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 import pymupdf as fitz
+from bibliography_parser import citation_fields, author_year_span, extract_doi
 
 
 class ExtractionError(ValueError):
@@ -20,6 +21,7 @@ class Reference:
     year: str | None
     number: int | None = None
     doi: str | None = None
+    authors: tuple[str, ...] = ()
 
 
 _HEADING_RE = re.compile(
@@ -111,7 +113,7 @@ def _clean_bibliography_lines(lines, repeated):
     last_number = 0
     for index, line in enumerate(lines):
         clean = ' '.join(line.split())
-        if _END_HEADING_RE.fullmatch(clean) or _BIO_START_RE.match(clean):
+        if _END_HEADING_RE.fullmatch(clean) or _BIO_START_RE.match(clean) or re.match(r'^\*?\s*corresponding\s+author\s*:', clean, re.I):
             break
         if re.fullmatch(r'[A-Z]\.', clean):
             following = next((v.strip() for v in lines[index + 1:] if v.strip()), '')
@@ -184,41 +186,8 @@ def _remove_numbering(text: str) -> str:
 
 
 def _title_and_year(text: str) -> tuple[str, str | None]:
-    cleaned = re.sub(r"\s+", " ", _remove_numbering(text)).strip()
-    year_match = _YEAR_RE.search(cleaned)
-    year = year_match.group(1) if year_match else None
-
-    quoted_title = _QUOTED_TITLE_RE.search(cleaned)
-    if quoted_title:
-        candidate = quoted_title.group(1)
-    elif year_match:
-        tail = cleaned[year_match.end() :].lstrip(" )].,;:")
-        # Author-date styles put the title right after the year. In numbered
-        # styles, the title generally appears before the publication year.
-        if year_match.start() < 120 and tail:
-            candidate = re.split(r"\.\s+(?=[A-ZÀ-ÖØ-Þ])", tail, maxsplit=1)[0]
-        else:
-            parts = re.split(r"(?<=[a-z0-9)])\.\s+(?=[A-ZÀ-ÖØ-Þ])", cleaned)
-            candidate = parts[1] if len(parts) > 1 else cleaned
-    else:
-        parts = re.split(r"(?<=[a-z0-9)])\.\s+(?=[A-ZÀ-ÖØ-Þ])", cleaned)
-        candidate = parts[1] if len(parts) > 1 else cleaned
-
-    candidate = candidate.strip(" \t\r\n.,;:()[]{}")
-    candidate = re.sub(r"^(?:title:\s*)", "", candidate, flags=re.IGNORECASE)
-    if len(candidate) > 300:
-        candidate = candidate[:300].rsplit(" ", 1)[0]
-    # A failed parse often lands on a journal abbreviation, page range, or
-    # article number. Keep those citations intact, but don't present metadata as
-    # if it were a paper title.
-    words = re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ]{2,}", candidate)
-    if (not quoted_title and len(words) < 4) or re.search(
-        r"(?:https?://|10\.\d{4,9}/|\b(?:vol(?:ume)?|pp?|pages?)\.?\s*\d|\b\d{2,4}\s*[-–—]\s*\d{2,4}\b)",
-        candidate,
-        re.IGNORECASE,
-    ):
-        candidate = ""
-    return candidate, year
+    title, year, _ = citation_fields(text)
+    return title, year
 
 
 def _split_entries(section: str) -> list[str]:
@@ -231,14 +200,26 @@ def _split_entries(section: str) -> list[str]:
             entries.append(value)
         current.clear()
 
-    for raw_line in section.splitlines():
+    lines = section.splitlines()
+    protected_until = -1
+    for index, raw_line in enumerate(lines):
         line = re.sub(r"\s+", " ", raw_line).strip()
         if not line:
-            finish()
+            upcoming = next((i for i in range(index + 1, len(lines)) if lines[i].strip()), None)
+            if upcoming is None or author_year_span(lines, upcoming) is not None:
+                finish()
             continue
-        if current and _starts_reference(line):
+        embedded_editors = current and re.search(r'\bIn\s+(?:[A-Z]\.\s*)*$', current[-1])
+        span = author_year_span(lines, index) if index > protected_until and not embedded_editors else None
+        marker = _NUMBERED_ENTRY_RE.match(line)
+        numbered_start = marker and (marker.group('bracket') or (
+            marker.group('text')[:1].isalpha() and int(marker.group('plain')) == len(entries) + (2 if current else 1)
+        ))
+        if current and (span is not None or numbered_start):
             finish()
         current.append(line)
+        if span is not None:
+            protected_until = span
     finish()
 
     # PDFs sometimes omit paragraph spacing and numbering. Filter page headers,
@@ -295,7 +276,7 @@ def _split_numbered_entries(
         if not entries:
             return []
         numbers = sorted(entries)
-        if numbers[0] != 1 or len(numbers) < 3 or len(numbers) / numbers[-1] < 0.75:
+        if numbers[0] != 1 or len(numbers) / numbers[-1] < 0.75:
             return []
         return [(number, entries[number]) for number in numbers]
 
@@ -342,7 +323,8 @@ def _split_numbered_entries(
     # Prefer numbered parsing only when the section has a substantial,
     # mostly consecutive sequence. This avoids mistaking short numbered lists
     # in an unnumbered bibliography for reference numbers.
-    if numbers[0] != 1 or len(numbers) < 3 or len(numbers) / numbers[-1] < 0.75:
+    short_dated = len(numbers) <= 2 and all(v[:1].isalpha() and (_YEAR_RE.search(v) or _DOI_RE.search(v)) for v in entries.values())
+    if numbers[0] != 1 or (len(numbers) < 3 and not short_dated) or len(numbers) / numbers[-1] < 0.75:
         return []
     return [(number, entries[number]) for number in numbers]
 
@@ -359,21 +341,42 @@ def _parse_references(page_text: list[str]) -> list[Reference]:
 
     references: list[Reference] = []
     for number, entry in entries:
-        title, year = _title_and_year(entry)
-        doi_match = _DOI_RE.search(entry)
-        doi = doi_match.group(0).rstrip(".,;:)") if doi_match else None
+        title, year, authors = citation_fields(entry)
+        doi = extract_doi(entry)
         references.append(
-            Reference(original_text=entry, title=title, year=year, number=number, doi=doi)
+            Reference(original_text=entry, title=title, year=year, number=number, doi=doi, authors=authors)
         )
     return references
 
 
 def extract_references(pdf_bytes: bytes) -> list[Reference]:
     """Extract references and best-effort title/year fields from a PDF."""
+    return extract_references_with_diagnostics(pdf_bytes)[0]
+
+
+def extract_references_with_diagnostics(pdf_bytes: bytes) -> tuple[list[Reference], dict]:
+    """Code extraction with explicit numbered coverage; never an AI request."""
     candidates, error = _bibliography_candidates(pdf_bytes)
     if not candidates:
         raise error
-    return _parse_references(max(candidates, key=lambda item: item[0])[2])
+    selected = max(candidates, key=lambda item: item[0])
+    references = _parse_references(selected[2])
+    labels = numbered_bibliography_entries(selected[1])
+    expected = max(labels, default=0)
+    gaps = sorted(set(range(1, expected + 1)) - labels.keys())
+    warnings = []
+    if gaps:
+        warnings.append('ยังอ่านข้อความอ้างอิงบางหมายเลขไม่ได้: ' + ', '.join(map(str, gaps)) + ' กรุณาเทียบ PDF ต้นฉบับ')
+    if not labels:
+        warnings.append('รายการอ้างอิงไม่มีลำดับเลขที่ยืนยันได้ จึงยังตรวจความครบอัตโนมัติไม่ได้ กรุณาเทียบต้นฉบับ')
+    return references, {
+        'extraction_method': 'Code extraction — ไม่ใช้ AI',
+        'extraction_warnings': warnings,
+        'expected_reference_count': expected or None,
+        'extraction_complete': bool(labels) and not gaps and len(references) == expected,
+        'parsed_title_count': sum(bool(r.title) for r in references),
+        'parsed_author_count': sum(bool(r.authors) for r in references),
+    }
 
 
 def _bibliography_candidates(pdf_bytes):

@@ -1,6 +1,6 @@
 # PDF extraction: supported layouts and evaluation
 
-Updated 2026-10-04. This change is shared by FastAPI and the Streamlit component.
+Updated 2026-10-04. This change is shared by FastAPI and the Streamlit component. The subsequent code-extraction improvements and current 95-test validation are detailed in [CODE_EXTRACTION_REPORT.md](CODE_EXTRACTION_REPORT.md). The 70-test result below describes the earlier AI-recovery release.
 
 ## What changed
 

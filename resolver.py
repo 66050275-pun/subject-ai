@@ -304,7 +304,9 @@ async def _semantic_scholar_lookup(
 def _new_result(reference: Reference) -> dict:
     return {
         "original_text": reference.original_text,
-        "title": reference.title if _usable_title(reference.title) else "",
+        "title": reference.title or "",
+        "authors": list(reference.authors),
+        "authors_source": "pdf" if reference.authors else None,
         "year": reference.year,
         "matched_title": None,
         "doi": reference.doi,
@@ -319,8 +321,10 @@ def _new_result(reference: Reference) -> dict:
 
 def _add_source(result: dict, source_name: str, metadata: dict) -> None:
     for field in ('authors', 'abstract', 'journal'):
-        if metadata.get(field) and not result.get(field):
+        if metadata.get(field) and (not result.get(field) or (field == 'authors' and result.get('authors_source') == 'pdf')):
             result[field] = metadata[field]
+            if field == 'authors':
+                result['authors_source'] = source_name
     title = metadata.get("title")
     doi = metadata.get("doi")
     paper_url = _safe_http_url(metadata.get("paper_url"))

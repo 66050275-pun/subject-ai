@@ -373,6 +373,7 @@
         document.getElementById('dataset-note').textContent = kind === 'ai' ? 'ชุดนี้สกัดบรรณานุกรมด้วย AI · ผลจากโค้ดยังอยู่ในแท็บของตัวเอง · ตรวจเทียบกับ PDF ก่อนใช้' : kind === 'code' ? 'ชุดนี้สกัดบรรณานุกรมด้วยโค้ด · ไม่ใช้ AI key · สลับไปดูผล AI ได้เมื่อสกัดอีกวิธีแล้ว' : 'ชุดนี้มาจากฐานข้อมูลวิชาการของ DOI · จำนวนรายการอาจขึ้นกับข้อมูลที่ฐานข้อมูลเปิดเผย';
         allCitingResults = payload.citing_papers || [];
         sourceName = payload.filename || 'references';
+        if (kind === 'code' && Number.isInteger(payload.parsed_title_count)) document.getElementById('dataset-note').textContent += ` · อ่านชื่อเรื่องจาก PDF ได้ ${payload.parsed_title_count}/${allResults.length} รายการ · รายการที่ไม่พบชื่อใช้ข้อความอ้างอิงเต็มค้นหา`;
         if (payload.extraction_warnings?.length) document.getElementById('dataset-note').textContent += ' · ' + payload.extraction_warnings.join(' · ');
         referenceCount = Number(payload.total_references ?? allResults.length);
         referencesTruncated = Boolean(payload.references_truncated);

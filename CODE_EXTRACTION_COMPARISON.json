@@ -1,0 +1,426 @@
+{
+  "baseline_commit": "a0c312edc17a0a26db2664fd3bafdaf7c061319f",
+  "note": "Offline counts, not an accuracy score or a live AI comparison. Original PDFs are not redistributed.",
+  "files": [
+    {
+      "file": "grobid-01.pdf",
+      "sha256": "351b71bca8a1248a9103d38769c260d92a3cd3e3d084aabd9a2a40a2e7b7c03e",
+      "before_status": "unsupported_or_no_bibliography",
+      "after_status": "unsupported_or_no_bibliography",
+      "before_references": null,
+      "after_references": null,
+      "before_missing_titles": null,
+      "after_missing_titles": null
+    },
+    {
+      "file": "grobid-02.pdf",
+      "sha256": "3758229de3e08d024975e2c1b69bf89d960393def9f3827a515cebbc464c2aa2",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 21,
+      "after_references": 21,
+      "before_missing_titles": 1,
+      "after_missing_titles": 2
+    },
+    {
+      "file": "grobid-03.pdf",
+      "sha256": "e29afe8d90a791c5c826ffc28fdc35bc5e7e79532420219f81f308d8859a6c85",
+      "before_status": "unsupported_or_no_bibliography",
+      "after_status": "unsupported_or_no_bibliography",
+      "before_references": null,
+      "after_references": null,
+      "before_missing_titles": null,
+      "after_missing_titles": null
+    },
+    {
+      "file": "grobid-04.pdf",
+      "sha256": "9f9e2c8c95d01801b3130de64ea797034fd7b6b69a340373a59fb6328376895c",
+      "before_status": "unsupported_or_no_bibliography",
+      "after_status": "unsupported_or_no_bibliography",
+      "before_references": null,
+      "after_references": null,
+      "before_missing_titles": null,
+      "after_missing_titles": null
+    },
+    {
+      "file": "grobid-05.pdf",
+      "sha256": "21df32cebe566b204e05c3715937aaca2bd5f7d540d9da5e0b5d9713bbe314f2",
+      "before_status": "unsupported_or_no_bibliography",
+      "after_status": "unsupported_or_no_bibliography",
+      "before_references": null,
+      "after_references": null,
+      "before_missing_titles": null,
+      "after_missing_titles": null
+    },
+    {
+      "file": "grobid-10.pdf",
+      "sha256": "8959058df3c87c577599b6ebf686c2b49e77edbac36c3c86b9a20e6a9879017a",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 39,
+      "after_references": 39,
+      "before_missing_titles": 37,
+      "after_missing_titles": 4
+    },
+    {
+      "file": "grobid-11.pdf",
+      "sha256": "3177f8b7ddffe1298b6aad7be56aafeec272a1d1b5615db45287e8c03551c730",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 19,
+      "after_references": 19,
+      "before_missing_titles": 15,
+      "after_missing_titles": 16
+    },
+    {
+      "file": "grobid-12.pdf",
+      "sha256": "a1491dbb213d53ceb83436c1314b9b5ee5a484a988a70e987339e953dba7fc4a",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 17,
+      "after_references": 17,
+      "before_missing_titles": 1,
+      "after_missing_titles": 0
+    },
+    {
+      "file": "grobid-13.pdf",
+      "sha256": "c02abe5da7005d7618e630e6116fe152746dc55edcd02a6be5c9cf575c6477b3",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 12,
+      "after_references": 12,
+      "before_missing_titles": 0,
+      "after_missing_titles": 0
+    },
+    {
+      "file": "grobid-14.pdf",
+      "sha256": "80a5313e8cf3cf751b8b56965552822e0e38b4a6d9ecee4caaca82527cdf2059",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 4,
+      "after_references": 4,
+      "before_missing_titles": 3,
+      "after_missing_titles": 2
+    },
+    {
+      "file": "grobid-15.pdf",
+      "sha256": "7db3d9dad3e4bdd51256ff1f2d11a9de5d35d74914ec804598db7b1c0ff2a10a",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 18,
+      "after_references": 18,
+      "before_missing_titles": 12,
+      "after_missing_titles": 13
+    },
+    {
+      "file": "grobid-16.pdf",
+      "sha256": "ff1de45c745d7ed9286cb9c3b24d7b33c02b54261e18a8dd2f804e66fbf336a0",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 30,
+      "after_references": 30,
+      "before_missing_titles": 25,
+      "after_missing_titles": 22
+    },
+    {
+      "file": "grobid-17.pdf",
+      "sha256": "58f9f7079b0f72f55a75bb4938091f0922faf35199fad1bf10eba5aef25da4aa",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 3,
+      "after_references": 3,
+      "before_missing_titles": 3,
+      "after_missing_titles": 1
+    },
+    {
+      "file": "grobid-18.pdf",
+      "sha256": "1311a3550f31b716a4b9068503aeac1dbbce1c5e03ed5c80ee042b8f53879a30",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 2,
+      "after_references": 1,
+      "before_missing_titles": 1,
+      "after_missing_titles": 1
+    },
+    {
+      "file": "grobid-19.pdf",
+      "sha256": "102d3ed3bb1900cc7c87ebdbfe44947320071e453f23620c5b887a0856d5a9b3",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 4,
+      "after_references": 4,
+      "before_missing_titles": 4,
+      "after_missing_titles": 4
+    },
+    {
+      "file": "grobid-20.pdf",
+      "sha256": "3242c2566357e1ad45b812804aaf1fa938046fc6009172f729c9aee89dcc887a",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 23,
+      "after_references": 23,
+      "before_missing_titles": 2,
+      "after_missing_titles": 10
+    },
+    {
+      "file": "grobid-21.pdf",
+      "sha256": "33f7a685259ceb71fc1193af13a4615fa1f93053183cbdf8f227f16aa1b91a21",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 14,
+      "after_references": 14,
+      "before_missing_titles": 0,
+      "after_missing_titles": 2
+    },
+    {
+      "file": "grobid-22.pdf",
+      "sha256": "ea899cabad0bf554801acf0917edeb5a9e896f728d5f666424b92ed3ff7a1950",
+      "before_status": "unsupported_or_no_bibliography",
+      "after_status": "unsupported_or_no_bibliography",
+      "before_references": null,
+      "after_references": null,
+      "before_missing_titles": null,
+      "after_missing_titles": null
+    },
+    {
+      "file": "science-parse-01.pdf",
+      "sha256": "adf84a934d658312d784115ca34f26dc30f8ea834004c7e93c2cdd5df5d382dd",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 17,
+      "after_references": 17,
+      "before_missing_titles": 0,
+      "after_missing_titles": 3
+    },
+    {
+      "file": "science-parse-02.pdf",
+      "sha256": "be8a4aa97b04b9d0850f1190d41dc61ec63b7000b4f1891d7fde7d64a18d5777",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 24,
+      "after_references": 24,
+      "before_missing_titles": 20,
+      "after_missing_titles": 0
+    },
+    {
+      "file": "science-parse-03.pdf",
+      "sha256": "46275c637796183e7a5f37d9797768692698334337349b026e51ee473c008762",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 23,
+      "after_references": 23,
+      "before_missing_titles": 1,
+      "after_missing_titles": 0
+    },
+    {
+      "file": "science-parse-04.pdf",
+      "sha256": "8bbf99a4e2d922cd1db6efe6ab127b971b83e44be6b2cc79bcfa63dc742b8999",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 13,
+      "after_references": 14,
+      "before_missing_titles": 4,
+      "after_missing_titles": 0
+    },
+    {
+      "file": "science-parse-05.pdf",
+      "sha256": "e8dfa950ec964a13df940a45e3661979c431ecbf5feb4a847c8beef8d00f246a",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 17,
+      "after_references": 32,
+      "before_missing_titles": 2,
+      "after_missing_titles": 0
+    },
+    {
+      "file": "science-parse-06.pdf",
+      "sha256": "67f6ee287751d569ebaa6c53792b64673ff64212aa399bb17d11d2099aa88c8d",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 17,
+      "after_references": 17,
+      "before_missing_titles": 0,
+      "after_missing_titles": 13
+    },
+    {
+      "file": "science-parse-07.pdf",
+      "sha256": "a7f4c6f8f1d6e852f99712168c7458c3104db549d83af47776e1a14f143172fe",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 3,
+      "after_references": 12,
+      "before_missing_titles": 3,
+      "after_missing_titles": 0
+    },
+    {
+      "file": "science-parse-08.pdf",
+      "sha256": "e129e42889a1514ae84cbb2cdbfe09c6458bb7efa95c31fba25c295c6b149624",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 20,
+      "after_references": 21,
+      "before_missing_titles": 1,
+      "after_missing_titles": 0
+    },
+    {
+      "file": "science-parse-09.pdf",
+      "sha256": "21e89d815d878eeb302ea4b0e8e1340c903104608e5d6050539b2e209ea43e1a",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 6,
+      "after_references": 21,
+      "before_missing_titles": 5,
+      "after_missing_titles": 0
+    },
+    {
+      "file": "science-parse-10.pdf",
+      "sha256": "5534bdb95a56f462c068792c8d3eee5e176eeeda83d3ea19988544399d912bc4",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 12,
+      "after_references": 22,
+      "before_missing_titles": 1,
+      "after_missing_titles": 2
+    },
+    {
+      "file": "science-parse-11.pdf",
+      "sha256": "7e8a953780db20a25141a3bd24d8f802e18e837cc2cfca8760fff1d01561206f",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 13,
+      "after_references": 16,
+      "before_missing_titles": 2,
+      "after_missing_titles": 0
+    },
+    {
+      "file": "science-parse-12.pdf",
+      "sha256": "429dd191bed7e447e735f2f659e23689d73fd00f2705a7067bda455dbc9af35a",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 16,
+      "after_references": 16,
+      "before_missing_titles": 2,
+      "after_missing_titles": 1
+    },
+    {
+      "file": "science-parse-13.pdf",
+      "sha256": "cae3c507695d660196c3e31774b23ee5de6381b8cd8ec6d7d69bbf56f788991a",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 6,
+      "after_references": 6,
+      "before_missing_titles": 5,
+      "after_missing_titles": 2
+    },
+    {
+      "file": "science-parse-14.pdf",
+      "sha256": "989b495ea6497717c4506e5dc71a21098965ed5a8b833dc88f4b7bab371e22af",
+      "before_status": "unsupported_or_no_bibliography",
+      "after_status": "unsupported_or_no_bibliography",
+      "before_references": null,
+      "after_references": null,
+      "before_missing_titles": null,
+      "after_missing_titles": null
+    },
+    {
+      "file": "science-parse-15.pdf",
+      "sha256": "1b551822daa7b873dc26f44bc4bc00d99a9843314ef9bad230e69f90bc4ef5da",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 23,
+      "after_references": 23,
+      "before_missing_titles": 1,
+      "after_missing_titles": 0
+    },
+    {
+      "file": "science-parse-16.pdf",
+      "sha256": "b0be260e6592963f7f6c937ebf973dfd56e2cba2394b45594658a3eee7b8cf14",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 33,
+      "after_references": 46,
+      "before_missing_titles": 2,
+      "after_missing_titles": 0
+    },
+    {
+      "file": "science-parse-17.pdf",
+      "sha256": "db8afdda2adbb5aeb79f7ef577c262cb873f201094cf0eb9feaf31ac9822f467",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 59,
+      "after_references": 59,
+      "before_missing_titles": 53,
+      "after_missing_titles": 3
+    },
+    {
+      "file": "science-parse-18.pdf",
+      "sha256": "ddc2d790d29cdb4afc859cc540efcdeee6459d1c8aaf4d5926042ad9e4bfadaa",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 22,
+      "after_references": 30,
+      "before_missing_titles": 4,
+      "after_missing_titles": 1
+    },
+    {
+      "file": "science-parse-19.pdf",
+      "sha256": "ae84cc48ff0005c5a79e095039e54e91dce5c116f65746e1593e819d21830ce9",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 18,
+      "after_references": 18,
+      "before_missing_titles": 2,
+      "after_missing_titles": 0
+    },
+    {
+      "file": "science-parse-20.pdf",
+      "sha256": "3d468138133c4074d8b90cb2db2e6157fe872af4031a7834fdcb6c7f480c8c49",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 25,
+      "after_references": 23,
+      "before_missing_titles": 3,
+      "after_missing_titles": 0
+    },
+    {
+      "file": "science-parse-21.pdf",
+      "sha256": "45838cd985f182bb97ee171448454bb0f85652dc74086ec63bd3ab74a59f762d",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 14,
+      "after_references": 17,
+      "before_missing_titles": 1,
+      "after_missing_titles": 0
+    },
+    {
+      "file": "science-parse-22.pdf",
+      "sha256": "8b8b680df02d17fae945599bb1d9ef83c06b149525f16ef2b487d52066e6e5bb",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 13,
+      "after_references": 13,
+      "before_missing_titles": 5,
+      "after_missing_titles": 3
+    },
+    {
+      "file": "science-parse-23.pdf",
+      "sha256": "aa21efd11b368bc5a9476aabebf7be63a1f31fba3aed56040859c527e3ebdadc",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 13,
+      "after_references": 14,
+      "before_missing_titles": 1,
+      "after_missing_titles": 0
+    },
+    {
+      "file": "science-parse-24.pdf",
+      "sha256": "14ece754d12f1c8ae3c2ca3c637ae3be745cd8f941b1bf296544084faa1b5158",
+      "before_status": "parsed",
+      "after_status": "parsed",
+      "before_references": 15,
+      "after_references": 24,
+      "before_missing_titles": 1,
+      "after_missing_titles": 1
+    }
+  ]
+}

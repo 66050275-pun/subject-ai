@@ -19,7 +19,7 @@ async def fake_app(scope,receive,send):
   await send({'type':'http.response.body','body':(json.dumps(event)+'\n').encode(),'more_body':True})
   await send({'type':'http.response.body','body':b'{"type":"done","total":2}\n'})
   return
- if path=='/api/references': payload={'filename':'Shared mobile paper','results':[paper(1),paper(2)],'total_references':2,'citation_links_available':True}
+ if path=='/api/references': payload={'filename':'Shared mobile paper','results':[paper(1),paper(2)],'total_references':2,'parsed_title_count':2,'expected_reference_count':2,'extraction_complete':True,'citation_links_available':True}
  elif path=='/api/doi':payload={'mode':'doi','filename':'DOI paper','results':[paper(1),paper(2)],'total_references':2,'citing_papers':[]}
  elif path=='/api/summarize':payload={'summary':'Mock shared summary','source':'PDF','provider':'openai','model':'test'}
  elif path=='/api/ai/intents':payload={'intents':[{'id':i,'intent':'Background','reason':'Mock context'} for i in (1,2,3)],'contexts':{}}

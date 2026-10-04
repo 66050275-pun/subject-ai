@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.formparsers import MultiPartParser
 
 from web_security import SecurityHeaders, MemoryOnlyUploads
-from extractor import extract_source_metadata, ExtractionError, extract_citation_counts, extract_citation_contexts, extract_references
+from extractor import extract_source_metadata, ExtractionError, extract_citation_counts, extract_citation_contexts, extract_references_with_diagnostics
 from ai_features import router as ai_router
 from oa_features import router as oa_router
 from resolver import (
@@ -72,7 +72,7 @@ async def find_references(file: UploadFile = File(...)) -> dict:
         raise HTTPException(status_code=415, detail="ไฟล์ที่เลือกไม่ใช่ PDF ที่ถูกต้อง")
 
     try:
-        references = extract_references(pdf_bytes)
+        references, diagnostics = extract_references_with_diagnostics(pdf_bytes)
     except ExtractionError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -91,6 +91,7 @@ async def find_references(file: UploadFile = File(...)) -> dict:
         item["citation_contexts"] = contexts.get(number, [])
 
     return {
+        **diagnostics,
         "filename": filename,
         "source_paper": extract_source_metadata(pdf_bytes),
         "total_references": len(results),
