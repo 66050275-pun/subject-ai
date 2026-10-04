@@ -1,6 +1,7 @@
 """Shared theme planning followed by small serial assignment requests."""
 import json
 from fastapi import HTTPException
+from ai_engine import AIResponseFormatError
 
 BATCH_SIZE = 12
 
@@ -49,17 +50,50 @@ def parse_themes(value):
 
 
 def parse_assignments(value, paper_ids, themes):
+    """Accept explicit equivalent assignments, never infer positional paper IDs."""
     theme_ids = {t['id'] for t in themes}
+    names = {t['name'].casefold(): t['id'] for t in themes}
     if isinstance(value, dict):
-        value = value.get('assignments')
+        roots = [k for k in ('assignments', 'clusters', 'groups') if k in value]
+        if len(roots) != 1:
+            raise ValueError('Ambiguous assignment roots')
+        root = roots[0]
+        value = value[root]
+        if root != 'assignments':
+            if not isinstance(value, list):
+                raise ValueError('Invalid groups')
+            rows = []
+            for group in value:
+                if not isinstance(group, dict):
+                    raise ValueError('Invalid group')
+                keys = [k for k in ('theme_id', 'id', 'name') if k in group]
+                # A numeric ID and matching name may be emitted together.
+                if not keys or 'theme_id' in group and 'id' in group:
+                    raise ValueError('Ambiguous group')
+                theme = group.get('theme_id', group.get('id', group.get('name')))
+                if 'name' in group and len(keys) > 1:
+                    if names.get(str(group['name']).strip().casefold()) != integer(theme):
+                        raise ValueError('Conflicting theme name')
+                members = [k for k in ('ids', 'paper_ids', 'reference_ids') if k in group]
+                if len(members) != 1 or not isinstance(group[members[0]], list):
+                    raise ValueError('Invalid members')
+                rows.extend({'id': i, 'theme_id': theme} for i in group[members[0]])
+            value = rows
+        elif isinstance(value, dict):
+            value = [{'id': i, 'theme_id': t} for i, t in value.items()]
     if not isinstance(value, list) or len(value) > BATCH_SIZE:
         raise ValueError('Invalid assignments')
     result = {}
     for row in value:
-        if not isinstance(row, dict) or 'id' not in row or 'theme_id' not in row:
-            raise ValueError('Missing assignment fields')
-        paper_id = integer(row['id'])
-        theme_id = integer(row['theme_id']) if row['theme_id'] is not None else None
+        if not isinstance(row, dict):
+            raise ValueError('Invalid assignment')
+        id_keys = [k for k in ('id', 'paper_id', 'reference_id') if k in row]
+        theme_keys = [k for k in ('theme_id', 'cluster_id', 'theme') if k in row]
+        if len(id_keys) != 1 or len(theme_keys) != 1:
+            raise ValueError('Missing or ambiguous assignment fields')
+        paper_id = integer(row[id_keys[0]])
+        theme = row[theme_keys[0]]
+        theme_id = names.get(theme.strip().casefold()) if isinstance(theme, str) and theme.strip().casefold() in names else (integer(theme) if theme is not None else None)
         if paper_id not in paper_ids or paper_id in result or (theme_id is not None and theme_id not in theme_ids):
             raise ValueError('Unknown or duplicate ID')
         result[paper_id] = theme_id
@@ -81,26 +115,34 @@ async def cluster_in_batches(papers, provider, model, key, base_url, generate, p
     try:
         themes = parse_themes(await generate(provider, model, key, prompt, structured=True,
                                             max_output_tokens=6000, base_url=base_url))
-    except ValueError:
+    except (ValueError, AIResponseFormatError):
         raise HTTPException(502, 'AI ส่งแผนธีมไม่ถูกต้อง ผลกราฟเดิมยังอยู่ ไม่มีการเรียกซ้ำอัตโนมัติ') from None
     await report('assigning', 1)
     assignments = {}
+    failed_batches = []
     for index, batch in enumerate(batches, 1):
         prompt = ('Assign only these paper IDs to the fixed theme IDs. Do not create or rename themes. '
                   'Use null when evidence is insufficient. Return compact JSON only: '
                   '{"assignments":[{"id":1,"theme_id":1}]}. Include every supplied paper ID once. '
+                  'Use the exact numeric paper IDs as provided, not positions 1..12. The theme_id must be one of the fixed theme IDs or null. '
                   'No abstracts, explanations, reasoning or Markdown in the response. Themes:\n' + json.dumps(themes, ensure_ascii=False) +
                   '\nPapers:\n' + json.dumps(batch, ensure_ascii=False))
         try:
             value = await generate(provider, model, key, prompt, structured=True, max_output_tokens=6000, base_url=base_url)
             assignments.update(parse_assignments(value, {p['id'] for p in batch}, themes))
+        except AIResponseFormatError:
+            failed_batches.append(index)
         except HTTPException as exc:
             raise HTTPException(exc.status_code, f'จัดกลุ่มชุด {index}/{len(batches)} ไม่สำเร็จ: {exc.detail} ผลกราฟเดิมยังอยู่ ไม่มีการเรียกซ้ำอัตโนมัติ') from None
         except ValueError:
-            raise HTTPException(502, f'AI ส่งเลขกลุ่มหรืออ้างอิงผิดในชุด {index}/{len(batches)} ผลกราฟเดิมยังอยู่') from None
+            failed_batches.append(index)
         await report('assigning', index + 1)
     clusters = [{'name': t['name'], 'ids': [p['id'] for p in papers if assignments.get(p['id']) == t['id']]} for t in themes]
     missing = [p['id'] for p in papers if assignments.get(p['id']) is None]
+    warnings = [f'AI ยังไม่จัดกลุ่ม {len(missing)} รายการ แสดงสีเทาโดยไม่เดาธีมให้'] if missing else []
+    if failed_batches:
+        warnings.append(f'อ่านผล AI ไม่ได้ในชุด {", ".join(map(str, failed_batches))}/{len(batches)} เก็บผลชุดที่สำเร็จไว้ ไม่มีการเรียกซ้ำอัตโนมัติ')
     return {'clusters': clusters, 'unassigned_ids': missing,
-            'warnings': [f'AI ยังไม่จัดกลุ่ม {len(missing)} รายการ แสดงสีเทาโดยไม่เดาธีมให้'] if missing else [],
+            'clustering_complete': not missing, 'failed_clustering_batches': failed_batches,
+            'warnings': warnings,
             'clustering_batches': len(batches), 'clustering_requests': total}

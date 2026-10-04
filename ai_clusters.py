@@ -21,7 +21,7 @@ def normalize_clusters(value, expected_ids):
         if len(names) != 1 or len(members) != 1:
             raise HTTPException(502, 'AI ไม่ส่งชื่อกลุ่มหรือเลขอ้างอิงที่ชัดเจน ผลกราฟเดิมยังอยู่')
         name, ids = group[names[0]], group[members[0]]
-        if not isinstance(name, str) or not 1 <= len(name.strip()) <= 120 or not isinstance(ids, list) or not 1 <= len(ids) <= 100:
+        if not isinstance(name, str) or not 1 <= len(name.strip()) <= 120 or not isinstance(ids, list) or not 0 <= len(ids) <= 100:
             raise HTTPException(502, 'AI ส่งชื่อกลุ่มหรือรายการอ้างอิงไม่ถูกต้อง ผลกราฟเดิมยังอยู่')
         clean = []
         for item in ids:

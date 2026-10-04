@@ -681,7 +681,7 @@
             document.getElementById('network-panel').open = true;
             setView('references');
             persistWorkspace();
-            output.textContent = (p.clustering_batches ? `จัดกลุ่มครบ ${p.clustering_batches} ชุด (${p.clustering_requests} คำขอ AI)\n` : '') + 'จัดสีธีมบนกราฟแล้ว · ธีมเป็นผลวิเคราะห์ AI จากชื่อเรื่องและ abstract ที่พบ' + (p.unassigned_ids?.length ? `\nAI ยังไม่จัดกลุ่ม ${p.unassigned_ids.length} รายการ แสดงสีเทาโดยไม่เดาธีมให้` : '');
+            output.textContent = (p.clustering_batches ? `ประมวลผล ${p.clustering_batches} ชุด (${p.clustering_requests} คำขอ AI)\n` : '') + `จัดกลุ่มได้ ${allResults.length - (p.unassigned_ids?.length || 0)}/${allResults.length} รายการ · ธีมเป็นผลวิเคราะห์ AI จากชื่อเรื่องและ abstract ที่พบ` + (p.unassigned_ids?.length ? `\nAI ยังไม่จัดกลุ่ม ${p.unassigned_ids.length} รายการ แสดงสีเทาโดยไม่เดาธีมให้` : '') + (p.failed_clustering_batches?.length ? `\nอ่านผลไม่ได้ ${p.failed_clustering_batches.length} ชุด · เก็บผลชุดที่สำเร็จไว้ ไม่มีการเรียกซ้ำอัตโนมัติ` : '');
           } else if (feature === 'extract-references') {
             p.source_paper ||= datasets.get('code')?.payload.source_paper || null;
             p.filename = selectedFile.name.replace(/\.pdf$/i, '') || 'งานวิจัย';

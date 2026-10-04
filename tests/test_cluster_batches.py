@@ -52,6 +52,52 @@ class ClusterBatchTests(unittest.IsolatedAsyncioTestCase):
         long=[dict(p,title='x'*1200,abstract='a'*8000) for p in PAPERS]
         for batch in evidence_batches(long):self.assertLessEqual(len(batch),12);self.assertLessEqual(len(json.dumps(batch,ensure_ascii=False)),7000)
 
+    def test_equivalent_explicit_assignment_shapes(self):
+        for value in [
+            {'assignments': {'3': '1', '6': None}},
+            {'assignments': [{'paper_id': '3', 'cluster_id': '1'}, {'reference_id': 6, 'theme': None}]},
+            {'groups': [{'name': 'Theme 1', 'reference_ids': [3]}, {'id': 2, 'name': 'Theme 2', 'ids': []}]},
+        ]:
+            with self.subTest(value=value):
+                result = parse_assignments(value, {3, 6}, THEMES)
+                self.assertEqual(result[3], 1)
+                self.assertIsNone(result.get(6))
+        for value in [
+            {'assignments': [{'id': 3, 'paper_id': 3, 'theme_id': 1}]},
+            {'groups': [{'id': 1, 'name': 'Theme 2', 'ids': [3]}]},
+            {'assignments': {'1': 1}},  # Never remap local positions to IDs 3,6.
+        ]:
+            with self.assertRaises(ValueError):
+                parse_assignments(value, {3, 6}, THEMES)
+
+    async def test_malformed_middle_batch_preserves_successes_without_retry(self):
+        from ai_engine import AIResponseFormatError
+        for error in (AIResponseFormatError(502, 'Invalid JSON'), ValueError()):
+            calls = 0
+            async def generate(*args, **kw):
+                nonlocal calls
+                calls += 1
+                if calls == 1: return {'themes': THEMES}
+                if calls == 3:
+                    if isinstance(error, AIResponseFormatError): raise error
+                    return {'assignments': [{'id': 999, 'theme_id': 1}]}
+                batch = json.loads(args[3].split('\nPapers:\n')[1])
+                return {'assignments': [{'id': p['id'], 'theme_id': 1} for p in batch]}
+            result = await cluster_in_batches(PAPERS, 'maxplus', 'test', 'fake', None, generate)
+            self.assertEqual(calls, 6)
+            self.assertEqual(result['failed_clustering_batches'], [2])
+            self.assertEqual(result['unassigned_ids'], [p['id'] for p in PAPERS[12:24]])
+            self.assertEqual(len(result['clusters'][0]['ids']), 42)
+            self.assertFalse(result['clustering_complete'])
+
+    async def test_malformed_planning_is_specific_and_stops_paid_calls(self):
+        from ai_engine import AIResponseFormatError
+        generate = AsyncMock(side_effect=AIResponseFormatError(502, 'Invalid JSON'))
+        with self.assertRaises(HTTPException) as caught:
+            await cluster_in_batches(PAPERS, 'maxplus', 'test', 'fake', None, generate)
+        self.assertIn('แผนธีม', caught.exception.detail)
+        self.assertEqual(generate.await_count, 1)
+
     async def test_stream_progress_result_and_error_events(self):
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),base_url='http://test') as client:
             for fail in (False,True):

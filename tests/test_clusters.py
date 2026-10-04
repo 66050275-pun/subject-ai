@@ -37,6 +37,15 @@ class ClusterTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(value=value), self.assertRaises(HTTPException):
                 normalize_clusters(value, IDS)
 
+    async def test_empty_themes_do_not_fail_schema(self):
+        papers = [{'id': i, 'title': f'Paper {i}'} for i in IDS]
+        groups = [{'name': 'Methods', 'ids': IDS}, {'name': 'Results', 'ids': []}, {'name': 'Background', 'ids': []}]
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
+            with patch.object(ai_features, 'source_material', AsyncMock(return_value=('Source', 'PDF', None))), patch.object(ai_features, 'enrich_ai_references', AsyncMock(return_value=papers)), patch.object(ai_features, 'generate', AsyncMock(return_value={'clusters': groups})):
+                response = await client.post('/api/ai/clusters', data={'provider': 'maxplus', 'model': 'test', 'payload': json.dumps({'papers': papers})}, headers={'X-AI-API-Key': 'fake'})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()['clusters'], groups)
+
     def test_json_envelopes_and_truncation(self):
         data=json.dumps({'clusters': GROUPS})
         for text in [data, '\ufeff'+data, 'ผลการจัดกลุ่ม:\n'+data, 'ผลลัพธ์:\n```JSON\n'+data+'\n```\nจัดจาก metadata']:
