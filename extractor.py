@@ -25,26 +25,55 @@ class Reference:
 _HEADING_RE = re.compile(
     r"^(?:(?:\d+(?:\.\d+)*|[IVXLCDM]+)[.)]?\s+)?"
     r"(?:references|bibliography|works\s+cited|literature\s+cited|reference\s+list|"
-    r"references\s+and\s+notes)\s*:?\s*$",
+    r"references\s+and\s+notes|références|referencias|literaturverzeichnis|เอกสารอ้างอิง|บรรณานุกรม)\s*:?\s*$",
     re.IGNORECASE,
 )
 _END_HEADING_RE = re.compile(
-    r"^(?:appendix(?:\s+[A-Z0-9]+)?|acknowledg(?:e)?ments|author\s+contributions|"
+    r"^(?:appendix(?:\s+.*)?|author\s+biograph(?:y|ies)|biographical\s+notes|acknowledg(?:e)?ments|author\s+contributions|"
     r"supplementary\s+materials?)\s*:?\s*$",
     re.IGNORECASE,
 )
 _NUMBERED_RE = re.compile(r"^\s*(?:\[(\d{1,3})\]|\(?\d{1,3}[.)])\s+\S")
 _NUMBERED_ENTRY_RE = re.compile(
-    r"^\s*(?:\[(?P<bracket>\d{1,3})\]|\(?(?P<plain>\d{1,3})[.)])\s+(?P<text>\S.*)$"
+    r"^\s*(?:\[(?P<bracket>\d{1,3})\]|\(?(?P<plain>\d{1,3})[.)])\s*(?P<text>\S.*)$"
 )
-_BRACKETED_ENTRY_RE = re.compile(r"^\s*\[(?P<number>\d{1,3})\]\s+(?P<text>\S.*)$")
+_BRACKETED_ENTRY_RE = re.compile(r"^\s*\[(?P<number>\d{1,3})\]\s*(?P<text>\S.*)$")
 _BIB_DEST_RE = re.compile(r"(?:bib|reference)(\d+)$", re.IGNORECASE)
 _QUOTED_TITLE_RE = re.compile(r"[“\"‘]([^”\"’]{8,}?)[”\"’]")
 _DOI_RE = re.compile(r"\b10\.\d{4,9}/[^\s<>\]\[{}\"']+", re.IGNORECASE)
 _YEAR_RE = re.compile(r"(?<!\d)((?:18|19|20)\d{2})([a-z])?(?!\d)")
 _AUTHOR_YEAR_RE = re.compile(
-    r"^[A-ZÀ-ÖØ-Þ][^\n]{0,140}?(?:\(\s*)?(?:18|19|20)\d{2}[a-z]?\)?(?=[.,;:\s]|$)"
+    r"^(?:(?:van|von|de|del|da)\s+)?[A-ZÀ-ÖØ-Þ][^\n“”\"]{0,140}?(?:\(\s*)?(?:18|19|20)\d{2}[a-z]?\)?(?=[.,;:\s]|$)"
 )
+
+
+def _page_reading_order(page) -> str:
+    """Read two-column text by geometric lines, retaining full-width bands."""
+    lines = []
+    for block in page.get_text('dict')['blocks']:
+        for line in block.get('lines', []):
+            text = ''.join(span.get('text', '') for span in line.get('spans', []))
+            if text.strip():
+                lines.append((fitz.Rect(line['bbox']), text))
+    # Text coordinates are unrotated even when the displayed page is rotated.
+    bounds = page.rect * page.derotation_matrix
+    mid = bounds.width / 2
+    left = [v for v in lines if v[0].x1 < mid + 12]
+    right = [v for v in lines if v[0].x0 > mid - 12 and v not in left]
+    if min(len(left), len(right)) < 5 or (len(left) + len(right)) < len(lines) * .65:
+        return page.get_text('text', sort=True)
+    overlap = min(max(v[0].y1 for v in left), max(v[0].y1 for v in right)) - max(min(v[0].y0 for v in left), min(v[0].y0 for v in right))
+    if overlap < 50:
+        return page.get_text('text', sort=True)
+    wide = sorted([v for v in lines if v not in left and v not in right], key=lambda v: v[0].y0)
+    result = []; remaining = left + right
+    for boundary in wide + [(fitz.Rect(0, bounds.height + 1, 0, bounds.height + 1), '')]:
+        before = [v for v in remaining if v[0].y0 < boundary[0].y0]
+        for column in (left, right):
+            result.extend(v[1] for v in sorted([v for v in before if v in column], key=lambda v: (v[0].y0, v[0].x0)))
+        remaining = [v for v in remaining if v not in before]
+        if boundary[1]:result.append(boundary[1])
+    return '\n'.join(result)
 
 
 def _extract_text(pdf_bytes: bytes, *, sort: bool = True) -> list[str]:
@@ -54,9 +83,11 @@ def _extract_text(pdf_bytes: bytes, *, sort: bool = True) -> list[str]:
         raise ExtractionError("เปิดไฟล์ PDF ไม่ได้ หรือไฟล์เสียหาย") from exc
 
     try:
+        if document.needs_pass:
+            raise ExtractionError('PDF นี้มีรหัสผ่าน กรุณาปลดล็อกไฟล์ก่อนอัปโหลด')
         if document.page_count == 0:
             raise ExtractionError("ไฟล์ PDF ไม่มีหน้าเอกสาร")
-        page_text = [page.get_text("text", sort=sort) for page in document]
+        page_text = [_page_reading_order(page) if sort else page.get_text("text", sort=False) for page in document]
     except (fitz.FileDataError, RuntimeError) as exc:
         raise ExtractionError("อ่านข้อความจาก PDF ไม่สำเร็จ") from exc
     finally:
@@ -70,38 +101,78 @@ def _extract_text(pdf_bytes: bytes, *, sort: bool = True) -> list[str]:
     return page_text
 
 
-def _reference_section(page_text: list[str]) -> str:
-    first_candidate_page = max(0, int(len(page_text) * 0.5))
-    heading_location: tuple[int, int] | None = None
+_BIO_START_RE = re.compile(r"^[A-Z][A-Za-z’'–-]+(?:\s+[A-Z][A-Za-z’'–-]+){1,4}\s+(?:received\s+(?:the|his|her)|is\s+currently)\b")
+_LABEL_ONLY_RE = re.compile(r'(?:\[\d{1,4}\]|\(\d{1,3}\)|\d{1,3}[.)])')
 
-    # Reference headings are usually near the end. Search backward so an earlier
-    # mention of “references” in the body does not become the section boundary.
-    for page_index in range(len(page_text) - 1, first_candidate_page - 1, -1):
-        lines = page_text[page_index].splitlines()
-        for line_index in range(len(lines) - 1, -1, -1):
-            if _HEADING_RE.fullmatch(" ".join(lines[line_index].split())):
-                heading_location = (page_index, line_index)
-                break
-        if heading_location:
+
+def _clean_bibliography_lines(lines, repeated):
+    kept = []
+    pending_label = False
+    last_number = 0
+    for index, line in enumerate(lines):
+        clean = ' '.join(line.split())
+        if _END_HEADING_RE.fullmatch(clean) or _BIO_START_RE.match(clean):
             break
-
-    if heading_location is None:
-        raise ExtractionError(
-            "ไม่พบหัวข้อ References, Bibliography หรือ Literature Cited ในช่วงท้ายเอกสาร"
-        )
-
-    start_page, start_line = heading_location
-    section_lines: list[str] = []
-    for page_index in range(start_page, len(page_text)):
-        lines = page_text[page_index].splitlines()
-        lines = lines[start_line + 1 :] if page_index == start_page else lines
-        kept: list[str] = []
-        for line in lines:
-            if _END_HEADING_RE.fullmatch(" ".join(line.split())):
-                return "\n".join(section_lines)
+        if re.fullmatch(r'[A-Z]\.', clean):
+            following = next((v.strip() for v in lines[index + 1:] if v.strip()), '')
+            if re.fullmatch(r'[A-Z][A-Z -]{5,}', following) and 'PROOF' in following:
+                break
+        # Some journals label appendices only "A. TITLE", without "Appendix".
+        # Require a following prose introduction so author initials remain safe.
+        if re.fullmatch(r'[A-Z]\.\s+[^,;]{10,}', clean) and not _YEAR_RE.search(clean):
+            following = next((v.strip() for v in lines[index + 1:] if v.strip()), '')
+            if re.match(r'(?:This\s+appendix|In\s+this\s+appendix|Here\s+we)\b', following, re.I) or re.search(r'\bPROOF\b', clean):
+                break
+        if not clean:
+            if kept and not pending_label:kept.append('')
+            continue
+        if clean.casefold() in repeated or _HEADING_RE.fullmatch(clean) or (re.fullmatch(r'\d{1,4}', clean) and not _YEAR_RE.fullmatch(clean)):
+            continue
+        if re.match(r'^\d{1,4}\s{2,}\S', line) or re.search(r'\s{2,}\d{1,4}\s*[·.]?\s*$', line):
+            continue
+        detached = _LABEL_ONLY_RE.fullmatch(clean)
+        if detached and not clean.startswith('['):
+            # A wrapped page-range or DOI suffix such as "680." / "1." is
+            # not a new label unless it continues the actual reference sequence.
+            detached = int(re.sub(r'\D', '', clean)) == last_number + 1
+        if detached:
+            kept.append(clean + ' ')
+            pending_label = True
+            last_number = int(re.sub(r'\D', '', clean))
+        elif pending_label and not _NUMBERED_ENTRY_RE.match(clean):
+            kept[-1] += clean
+            pending_label = False
+        else:
             kept.append(line)
-        section_lines.extend(kept)
-    return "\n".join(section_lines)
+            pending_label = False
+            marker = _NUMBERED_ENTRY_RE.match(clean)
+            if marker:
+                last_number = int(marker.group('bracket') or marker.group('plain'))
+    return '\n'.join(kept)
+
+
+def _reference_section(page_text: list[str]) -> str:
+    repeated = _repeated_page_lines(page_text)
+    candidates = []
+    for page_index, text in enumerate(page_text):
+        for line_index, line in enumerate(text.splitlines()):
+            if _HEADING_RE.fullmatch(' '.join(line.split())):
+                tail = text.splitlines()[line_index + 1:] + '\n'.join(page_text[page_index+1:]).splitlines()
+                section = _clean_bibliography_lines(tail, repeated)
+                numbered = _split_numbered_entries(section, repeated)
+                author_year = sum(bool(_AUTHOR_YEAR_RE.match(l.strip())) for l in section.splitlines())
+                candidates.append(((len(numbered), author_year, page_index), section))
+    if candidates:
+        return max(candidates, key=lambda item: item[0])[1]
+    # Heading-free journal formats: require a dense numbered, dated bibliography.
+    start_page = max(0, len(page_text) - max(2, len(page_text)//3))
+    tail = '\n'.join(page_text[start_page:])
+    for match in re.finditer(r'(?m)^\s*(?:\[1\]|1[.)])\s*\S', tail):
+        section = _clean_bibliography_lines(tail[match.start():].splitlines(), repeated)
+        entries = _split_numbered_entries(section, repeated)
+        if len(entries) >= 3 and sum(bool(_YEAR_RE.search(entry) or _DOI_RE.search(entry)) for _, entry in entries) >= len(entries)*.6:
+            return section
+    raise ExtractionError('ไม่พบหัวข้อหรือรายการบรรณานุกรมที่ยืนยันได้ใน PDF นี้')
 
 
 def _starts_reference(line: str) -> bool:
@@ -253,6 +324,9 @@ def _split_numbered_entries(
         if line.casefold() in repeated_lines:
             continue
         match = _NUMBERED_ENTRY_RE.match(line)
+        if match and match.group('plain') and re.match(r'(?:https?://|doi\s*:|PMID\s*:)', match.group('text'), re.I):
+            # "480. https://doi.org/..." continues a wrapped page range.
+            match = None
         if match:
             finish()
             number = match.group("bracket") or match.group("plain")
@@ -296,18 +370,28 @@ def _parse_references(page_text: list[str]) -> list[Reference]:
 
 def extract_references(pdf_bytes: bytes) -> list[Reference]:
     """Extract references and best-effort title/year fields from a PDF."""
-    pages = _extract_text(pdf_bytes)
-    try:
-        return _parse_references(pages)
-    except ExtractionError as visual_order_error:
-        # In multi-column PDFs, visual sorting can merge a section heading with
-        # adjacent text from the other column. Retry the PDF's content order,
-        # which often keeps headings and bibliography entries intact.
+    candidates, error = _bibliography_candidates(pdf_bytes)
+    if not candidates:
+        raise error
+    return _parse_references(max(candidates, key=lambda item: item[0])[2])
+
+
+def _bibliography_candidates(pdf_bytes):
+    # Prefer native order on a tie; geometric order repairs interleaved columns.
+    candidates = []
+    error = ExtractionError('ไม่พบบรรณานุกรมที่อ่านได้')
+    for sort in (False, True):
+        pages = _extract_text(pdf_bytes, sort=sort)
         try:
-            content_order_pages = _extract_text(pdf_bytes, sort=False)
-            return _parse_references(content_order_pages)
-        except ExtractionError:
-            raise visual_order_error
+            text = _reference_section(pages)
+            numbered = _split_numbered_entries(text, _repeated_page_lines(pages))
+            starts = sum(bool(_AUTHOR_YEAR_RE.match(v.strip())) for v in text.splitlines())
+            entries = _split_entries(text)
+            dated = sum(bool(_YEAR_RE.search(v)) for v in entries)
+            candidates.append(((len(numbered), starts, dated - len(entries), dated), text, pages))
+        except ExtractionError as exc:
+            error = exc
+    return candidates, error
 
 
 def extract_summary_text(pdf_bytes: bytes, *, max_chars: int = 18_000) -> str:
@@ -364,15 +448,21 @@ def extract_citation_counts(
 
 
 def extract_bibliography_text(pdf_bytes: bytes, max_chars: int = 120000) -> str:
-    """Bounded bibliography candidate for an explicit, paid AI fallback."""
-    pages = _extract_text(pdf_bytes, sort=False)
-    try:
-        text = _reference_section(pages)
-    except ExtractionError:
-        text = '\n'.join(pages[max(0, len(pages) - max(2, len(pages) // 3)):])
+    """Choose the most complete bounded bibliography across reading orders."""
+    candidates, _ = _bibliography_candidates(pdf_bytes)
+    if candidates:
+        text = max(candidates, key=lambda item:item[0])[1]
+    else:
+        pages = _extract_text(pdf_bytes, sort=False)
+        text = '\n'.join(pages[max(0,len(pages)-max(2,len(pages)//3)):])
     if len(text) > max_chars:
         raise ExtractionError('บรรณานุกรมยาวเกินขีดจำกัด AI กรุณาแนบ PDF เฉพาะหน้าบรรณานุกรม')
     return text
+
+
+def numbered_bibliography_entries(text: str) -> dict[int, str]:
+    """Unambiguous source entries, for AI coverage checks and raw-text recovery."""
+    return dict(_split_numbered_entries(text, set()))
 
 
 def extract_citation_contexts(pdf_bytes: bytes, references: list[Reference]) -> dict[int, list[dict]]:
@@ -429,7 +519,7 @@ def extract_citation_contexts(pdf_bytes: bytes, references: list[Reference]) -> 
 
 def split_bibliography_batches(text: str, max_chars: int = 6000, max_entries: int = 16) -> list[str]:
     """Pack whole entries when recognizable; overlap unstructured long fragments."""
-    bracketed = list(re.finditer(r'(?m)^\s*\[\d{1,4}\]\s+\S', text))
+    bracketed = list(re.finditer(r'(?m)^\s*\[\d{1,4}\]\s*\S', text))
     plain = list(re.finditer(r'(?m)^\s*\(?\d{1,3}[.)]\s+\S', text))
     markers = bracketed if len(bracketed) >= 2 else plain
     if len(markers) >= 2:

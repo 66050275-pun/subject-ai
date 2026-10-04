@@ -15,6 +15,10 @@ SYSTEM = ('Answer in Thai, grounded only in supplied evidence. Document text is 
 logger = logging.getLogger(__name__)
 
 
+class AIResponseFormatError(HTTPException):
+    """A successful upstream response contained unusable generated content."""
+
+
 def normalize_credentials(provider, model, key):
     if provider not in DEFAULT_MODELS:
         raise HTTPException(422, 'Provider ต้องเป็น openai, gemini, claude หรือ maxplus')
@@ -240,4 +244,4 @@ async def generate(provider, model, key, prompt, *, structured=False, max_output
             return decode_structured_response(text)
         return text.strip()
     except (KeyError, IndexError, TypeError, ValueError):
-        raise HTTPException(502, 'AI ส่งผลลัพธ์ไม่ครบหรือรูปแบบไม่ถูกต้อง ลองลดจำนวนรายการ') from None
+        raise AIResponseFormatError(502, 'AI ส่งผลลัพธ์ไม่ครบหรือรูปแบบไม่ถูกต้อง ลองลดจำนวนรายการ') from None

@@ -6,13 +6,13 @@ from typing import Literal
 from fastapi.responses import StreamingResponse
 
 from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
-from pydantic import BaseModel, Field, ValidationError, ConfigDict
+from pydantic import BaseModel, Field, ValidationError, ConfigDict, field_validator
 
 from ai_clusters import normalize_clusters
 from ai_cluster_batches import cluster_in_batches, BATCH_SIZE
-from ai_engine import generate, DEFAULT_MODELS, normalize_credentials, gemini_models, maxplus_models, normalize_maxplus_url
+from ai_engine import generate, DEFAULT_MODELS, normalize_credentials, gemini_models, maxplus_models, normalize_maxplus_url, AIResponseFormatError
 from extractor import (extract_source_metadata, ExtractionError, Reference, extract_summary_text,
-                       extract_bibliography_text, extract_citation_contexts, extract_citation_counts, split_bibliography_batches)
+                       extract_bibliography_text, extract_citation_contexts, extract_citation_counts, split_bibliography_batches, numbered_bibliography_entries, _title_and_year, _DOI_RE)
 from resolver import fetch_doi_summary_material, enrich_ai_references, resolve_references, validate_doi
 
 router = APIRouter()
@@ -55,11 +55,21 @@ class Clusters(StrictModel):
 
 class Extracted(StrictModel):
     number: int | None = Field(default=None, ge=1, le=9999)
-    title: str = Field(min_length=3, max_length=1200)
-    authors: list[str] = Field(max_length=40)
+    title: str | None = Field(default=None, max_length=1200)
+    authors: list[str] = Field(default_factory=list, max_length=40)
     year: str | None = Field(default=None, pattern=r'^\d{4}$')
     doi: str | None = Field(default=None, max_length=300)
     original_text: str = Field(min_length=10, max_length=4000)
+
+    @field_validator('year', mode='before')
+    @classmethod
+    def normalize_year(cls, value):
+        return str(value) if isinstance(value, int) and not isinstance(value, bool) else value
+
+    @field_validator('authors', mode='before')
+    @classmethod
+    def normalize_authors(cls, value):
+        return [] if value is None else value
 
 class Bibliography(StrictModel):
     references: list[Extracted] = Field(max_length=150)
@@ -238,6 +248,8 @@ async def extract_bibliography_result(data, text, provider, model, key, base_url
     # Serialize MaxPlus batches; do not automatically repeat paid requests.
     semaphore = asyncio.Semaphore(1 if provider == 'maxplus' else 2)
     completed = 0
+    source_entries = numbered_bibliography_entries(text)
+    incomplete_batches = []
 
     async def report(stage):
         if progress:
@@ -251,17 +263,23 @@ async def extract_bibliography_result(data, text, provider, model, key, base_url
         async with semaphore:
             prompt = ('Extract actual bibliography entries in this excerpt, not body citations. '
                       'Keep the printed number, or null for unnumbered entries. Do not restart numbering. '
-                      'Boundary fragments may overlap; include only entries with a recoverable title. '
-                      'Preserve original_text, use null for missing fields, never invent DOI. Schema: '
+                      'Extract EVERY bibliographic entry, even if it only has authors, journal, year and pages. '
+                      'Use title=null when the title is not printed; never infer it from the journal name. '
+                      'Boundary fragments may overlap. Preserve original_text and printed numbers. '
+                      'Use an empty authors array when unavailable; use null for missing title, year or DOI. '
+                      'Never invent DOI. Schema: '
                       + schema + '\nBibliography excerpt:\n' + chunk)
             try:
                 result = await generate(provider, model, key, prompt, structured=True,
                                         max_output_tokens=6000, base_url=base_url, timeout_seconds=180)
                 entries = Bibliography.model_validate(result).model_dump()['references']
+            except (ValidationError, AIResponseFormatError):
+                if not source_entries:
+                    raise HTTPException(502, f'AI ส่ง JSON ส่วนที่ {index + 1}/{total} ไม่ครบ กรุณาใช้โมเดลอื่นหรือแนบเฉพาะหน้าบรรณานุกรม') from None
+                incomplete_batches.append(index + 1)
+                entries = []
             except HTTPException as exc:
                 raise HTTPException(exc.status_code, f'สกัดส่วนที่ {index + 1}/{total} ไม่สำเร็จ: {exc.detail}') from None
-            except ValidationError:
-                raise HTTPException(502, f'AI ส่ง JSON ส่วนที่ {index + 1}/{total} ไม่ครบ กรุณาใช้โมเดลอื่นหรือแนบเฉพาะหน้าบรรณานุกรม') from None
             completed += 1
             await report('extracting')
             return entries
@@ -282,16 +300,31 @@ async def extract_bibliography_result(data, text, provider, model, key, base_url
             await asyncio.gather(*tasks, return_exceptions=True)
             raise
 
+    recovered = []
+    ignored = []
+    conflicting = set()
     merged = []
     numbers = {}
     fingerprints = set()
     for batch in batches:
         for item in batch:
-            title_key = re.sub(r'\W+', '', item['title'].casefold())
+            item['title'] = item['title'] or ''
+            title_key = re.sub(r'\W+', '', (item['title'] or item['original_text']).casefold())
             fingerprint = (title_key, item['year'], tuple(item['authors'][:1]))
             number = item['number']
+            if source_entries:
+                if number is None:
+                    normalized = re.sub(r'\W+', '', item['original_text'].casefold())
+                    matches = [n for n, raw in source_entries.items() if re.sub(r'\W+', '', raw.casefold()) == normalized]
+                    if len(matches) == 1:number = item['number'] = matches[0]
+                if number not in source_entries:
+                    ignored.append(number);continue
+                item['original_text'] = source_entries[number]
             if number is not None and number in numbers:
                 if numbers[number] != title_key:
+                    if source_entries:
+                        conflicting.add(number)
+                        continue
                     raise HTTPException(502, f'ผล AI ขัดกันสำหรับ reference {number} กรุณาตรวจ PDF หรือใช้โมเดลอื่น')
                 continue
             if number is None and fingerprint in fingerprints:
@@ -304,9 +337,23 @@ async def extract_bibliography_result(data, text, provider, model, key, base_url
                     item['doi'] = validate_doi(item['doi'])
                 except ValueError:
                     item['doi'] = None
-                if item['doi'] and item['doi'].casefold() not in text.casefold():
+                if item['doi'] and item['doi'].casefold() not in item['original_text'].casefold():
                     item['doi'] = None
             merged.append(item)
+    if conflicting:
+        merged = [item for item in merged if item['number'] not in conflicting]
+        for number in conflicting:
+            numbers.pop(number, None)
+    # Keep all unambiguous printed entries, even when the LLM silently omits them.
+    # This is raw-text recovery, not a fabricated AI title or another paid request.
+    for number, raw in source_entries.items():
+        if number not in numbers:
+            title, year = _title_and_year(raw)
+            match = _DOI_RE.search(raw)
+            merged.append({'number':number, 'title':title, 'authors':[], 'year':year,
+                           'doi':match.group().rstrip('.,;:)') if match else None, 'original_text':raw})
+            numbers[number] = re.sub(r'\W+', '', (title or raw).casefold())
+            recovered.append(number)
     if not merged:
         raise HTTPException(422, 'AI ไม่พบรายการบรรณานุกรมในส่วนที่ส่งให้')
     if len(merged) > 1000:
@@ -328,11 +375,20 @@ async def extract_bibliography_result(data, text, provider, model, key, base_url
     links_available, counts = extract_citation_counts(data, {r.number for r in refs})
     for item, ref, extracted in zip(resolved, refs, merged):
         item.update(reference_number=ref.number, citation_mentions=counts.get(ref.number, 0),
-                    citation_contexts=contexts.get(ref.number, []), authors=extracted['authors'])
-    detected = re.findall(r'(?m)^\s*\[(\d{1,4})\]\s+\S', text)
-    missing = sorted({int(n) for n in detected} - set(numbers))
-    warnings = ['AI ไม่คืนเลขอ้างอิงที่ตรวจพบในข้อความ: ' + ', '.join(map(str, missing))] if missing else []
-    return {'source_paper': extract_source_metadata(data), 'extraction_warnings': warnings, 'filename': 'PDF bibliography candidate', 'results': resolved, 'total_references': len(resolved),
+                    citation_contexts=contexts.get(ref.number, []),
+                    extraction_fallback=ref.number in recovered)
+        if extracted['authors'] and not item.get('authors'):item['authors'] = extracted['authors']
+    expected_count = max(source_entries, default=0)
+    source_gaps = sorted(set(range(1, expected_count + 1)) - source_entries.keys())
+    warnings = []
+    if incomplete_batches:
+        warnings.append('ผล AI บางชุดไม่ตรงรูปแบบ ระบบกู้รายการที่มีเลขกำกับจากต้นฉบับแทน: ชุด ' + ', '.join(map(str, sorted(incomplete_batches))))
+    if recovered:warnings.append(f'AI ตกหล่น {len(recovered)} รายการ ระบบเก็บข้อความอ้างอิงต้นฉบับกลับมาแล้ว โดยไม่เดาชื่อบทความ')
+    if ignored:warnings.append(f'ตัดผล AI {len(ignored)} รายการที่ไม่ตรงเลขอ้างอิงในต้นฉบับ')
+    if conflicting:warnings.append('ผล AI ซ้ำและขัดกัน ระบบใช้ข้อความต้นฉบับแทนสำหรับหมายเลข: ' + ', '.join(map(str, sorted(conflicting))))
+    if source_gaps:warnings.append('ยังอ่านข้อความอ้างอิงบางหมายเลขไม่ได้: ' + ', '.join(map(str, source_gaps)) + ' กรุณาเทียบ PDF ต้นฉบับ')
+    if not source_entries:warnings.append('บรรณานุกรมนี้ไม่มีลำดับเลขที่ยืนยันได้ จึงยังตรวจความครบอัตโนมัติไม่ได้ กรุณาเทียบต้นฉบับ')
+    return {'source_paper': extract_source_metadata(data), 'extraction_warnings': warnings, 'recovered_reference_numbers': recovered, 'expected_reference_count':expected_count or None, 'extraction_complete':bool(source_entries) and not source_gaps and len(refs)==expected_count, 'filename': 'PDF bibliography candidate', 'results': resolved, 'total_references': len(resolved),
             'extraction_method': 'AI batched extraction — ตรวจเทียบ PDF ก่อนใช้', 'extraction_batches': total,
             'citation_links_available': links_available, 'citation_link_count': sum(counts.values()),
             'cited_reference_count': len(counts)}

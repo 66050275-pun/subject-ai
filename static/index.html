@@ -684,7 +684,8 @@
           } else if (feature === 'extract-references') {
             p.source_paper ||= datasets.get('code')?.payload.source_paper || null;
             p.filename = selectedFile.name.replace(/\.pdf$/i, '') || 'งานวิจัย';
-            displayPayload(p, 'ai'); output.textContent = `สกัดด้วย AI แล้ว ${p.total_references} รายการ${p.extraction_batches ? ' จาก ' + p.extraction_batches + ' ส่วน' : ''} · ผลโค้ดยังอยู่ในแท็บเดิม${p.extraction_warnings?.length ? '\n' + p.extraction_warnings.join('\n') : ''}`;
+            const recovered = (p.results || []).filter(r => r.extraction_fallback).length;
+            displayPayload(p, 'ai'); output.textContent = `ได้ ${p.total_references} รายการ (AI ${p.total_references - recovered} · กู้จากต้นฉบับ ${recovered})${p.extraction_batches ? ' จาก ' + p.extraction_batches + ' ส่วน' : ''} · ผลโค้ดยังอยู่ในแท็บเดิม${p.extraction_warnings?.length ? '\n' + p.extraction_warnings.join('\n') : ''}`;
           } else output.textContent = p.synthesis;
         } catch (e) { output.textContent = e.message; }
       });
@@ -840,7 +841,7 @@
           const card = document.createElement('article');
           card.className = 'reference-card';
           const provenance = document.createElement('span'); provenance.className = 'provenance-badge' + (activeDataset === 'ai' ? ' ai' : '');
-          provenance.textContent = (activeDataset === 'ai' ? '✦ ' : '⌘ ') + datasetLabels[activeDataset]; card.append(provenance);
+          provenance.textContent = item.extraction_fallback ? '↳ กู้คืนจากข้อความอ้างอิงต้นฉบับ' : (activeDataset === 'ai' ? '✦ ' : '⌘ ') + datasetLabels[activeDataset]; card.append(provenance);
           card.dataset.referenceNumber = String(item.reference_number);
           const top = document.createElement('div'); top.className = 'flex items-start gap-3';
           const number = document.createElement('span'); number.className = 'grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-xs font-bold text-slate-600';

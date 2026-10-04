@@ -20,6 +20,7 @@
     out.authors=Array.isArray(value.authors)?value.authors.filter(v=>typeof v==='string').slice(0,40).map(v=>text(v,300)):[];
     out.reference_number=Number.isSafeInteger(value.reference_number)&&value.reference_number>0?value.reference_number:1;
     out.citation_mentions=Number.isSafeInteger(value.citation_mentions)?Math.max(0,value.citation_mentions):0;
+    out.extraction_fallback=value.extraction_fallback===true;
     out.access_status=['pdf_available','open_source_record','scholar_search'].includes(value.access_status)?value.access_status:'scholar_search';
     out.metadata_sources=Array.isArray(value.metadata_sources)?value.metadata_sources.slice(0,20).map(v=>text(v,80)):[];
     out.source_links=Array.isArray(value.source_links)?value.source_links.slice(0,20).map(v=>({url:url(v?.url),source:text(v?.source,80),label:text(v?.label,100)})).filter(v=>v.url):[];
@@ -33,6 +34,9 @@
     if((payload.citing_papers||[]).length>1000)throw new Error('รายการ citation มากเกินไป');
     const out={filename:text(payload.filename,500),mode:kind==='doi'?'doi':'pdf',results:payload.results.map(paper),citing_papers:(payload.citing_papers||[]).map(paper),source_paper:payload.source_paper?paper(payload.source_paper):null,workspace:workspace(payload.workspace)};
     out.total_references=out.results.length;
+    out.extraction_warnings=Array.isArray(payload.extraction_warnings)?payload.extraction_warnings.slice(0,10).map(v=>text(v,1200)):[];
+    out.expected_reference_count=Number.isSafeInteger(payload.expected_reference_count)&&payload.expected_reference_count>0?payload.expected_reference_count:null;
+    out.extraction_complete=payload.extraction_complete===true;
     for(const key of ['citation_link_count','cited_reference_count'])out[key]=Number.isSafeInteger(payload[key])?Math.max(0,payload[key]):0;
     for(const key of ['citation_links_available','references_truncated','citations_truncated'])out[key]=payload[key]===true;
     if(bytes(out)>MAX_RECORD)throw new Error('ผลชุดนี้ใหญ่เกิน 1 MB จึงไม่ได้บันทึกประวัติ ใช้ export ผลรายการแทนได้');

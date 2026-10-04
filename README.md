@@ -71,3 +71,5 @@ uvicorn main:app --reload
 ```
 
 Missing optional credentials skip that service; other sources continue. arXiv requests are spaced at least 3 seconds apart, so large deep searches may take several minutes. See [OPEN_ACCESS.md](OPEN_ACCESS.md) for source documentation, matching rules and limits. URLs are provider-indexed, not verified downloads; redirects, unavailable hosts and expired links can still prevent downloading. The server does not download or proxy PDF files, and no coverage percentage is guaranteed.
+
+PDF layout improvements, numbered coverage recovery and offline corpus evaluation are documented in [PDF_EXTRACTION_TESTS.md](PDF_EXTRACTION_TESTS.md). Titleless entries remain available as full citations; AI omissions are labelled separately from generated results.
