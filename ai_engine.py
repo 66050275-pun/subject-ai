@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 
 class AIResponseFormatError(HTTPException):
     """A successful upstream response contained unusable generated content."""
+    def __init__(self, status_code, detail, *, reason='invalid_response'):
+        super().__init__(status_code, detail)
+        self.reason = reason
 
 
 def normalize_credentials(provider, model, key):
@@ -172,6 +175,10 @@ async def gemini_models(key):
 def decode_structured_response(text):
     """Read one complete JSON object/array, optionally in a Markdown fence."""
     text = text.strip().lstrip('\ufeff')
+    # Explicit reasoning blocks are not final answers, even if they contain JSON.
+    text = re.sub(r'<(think|analysis)>[\s\S]*?</\1>', '', text, flags=re.IGNORECASE).strip()
+    if re.search(r'</?(?:think|analysis)\b', text, flags=re.IGNORECASE):
+        raise ValueError('Incomplete reasoning block')
     fences = re.findall(r'```(?:json)?\s*([\s\S]*?)```', text, re.IGNORECASE)
     if fences:
         if len(fences) != 1:
@@ -190,7 +197,7 @@ def decode_structured_response(text):
     return result
 
 
-async def generate(provider, model, key, prompt, *, structured=False, max_output_tokens=6000, base_url=None, timeout_seconds=90):
+async def generate(provider, model, key, prompt, *, structured=False, response_parser=None, max_output_tokens=6000, base_url=None, timeout_seconds=90):
     model, key = normalize_credentials(provider, model, key)
     if provider == 'maxplus':
         base_url = normalize_maxplus_url(base_url)
@@ -228,20 +235,32 @@ async def generate(provider, model, key, prompt, *, structured=False, max_output
     except httpx.HTTPError:
         raise HTTPException(502, 'เชื่อมต่อ AI provider ไม่สำเร็จ') from None
     raise_provider_error(response, provider)
+    finish_reason = None
+    format_reason = 'invalid_response'
     try:
         data = response.json()
         if provider in ('openai', 'maxplus'):
+            finish_reason = data['choices'][0].get('finish_reason')
             text = data['choices'][0]['message']['content']
             if isinstance(text, list):
                 text = '\n'.join(p.get('text', '') for p in text if isinstance(p, dict))
         elif provider == 'gemini':
+            finish_reason = data['candidates'][0].get('finishReason')
             text = '\n'.join(p.get('text', '') for p in data['candidates'][0]['content']['parts'] if not p.get('thought'))
         else:
+            finish_reason = data.get('stop_reason')
             text = '\n'.join(p.get('text', '') for p in data['content'] if p.get('type') == 'text')
         if not isinstance(text, str) or not text.strip():
+            format_reason = 'empty_response'
             raise ValueError()
         if structured:
-            return decode_structured_response(text)
+            format_reason = 'invalid_structure'
+            return (response_parser or decode_structured_response)(text)
         return text.strip()
     except (KeyError, IndexError, TypeError, ValueError):
-        raise AIResponseFormatError(502, 'AI ส่งผลลัพธ์ไม่ครบหรือรูปแบบไม่ถูกต้อง ลองลดจำนวนรายการ') from None
+        if finish_reason in ('length', 'MAX_TOKENS', 'max_tokens'):
+            format_reason = 'output_limit'
+        logger.warning('AI provider=%s response_format=%s', provider, format_reason)
+        detail = ('AI ตอบไม่ครบเพราะถึงขีดจำกัด output ของโมเดล ลองเลือกโมเดลที่ตอบสั้นหรือปิด reasoning ที่ผู้ให้บริการ'
+                  if format_reason == 'output_limit' else 'AI ไม่ส่งข้อมูลที่อ่านได้ตามรูปแบบที่ขอ ลองเลือกโมเดลอื่น')
+        raise AIResponseFormatError(502, detail, reason=format_reason) from None

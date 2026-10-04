@@ -9,8 +9,8 @@ def normalize_clusters(value, expected_ids):
         if len(roots) != 1:
             raise HTTPException(502, 'AI ไม่ส่งรายการกลุ่มหัวข้อที่อ่านได้ ผลกราฟเดิมยังอยู่')
         value = value[roots[0]]
-    if not isinstance(value, list) or not 3 <= len(value) <= 5:
-        raise HTTPException(502, 'AI ต้องส่งกลุ่มหัวข้อ 3–5 กลุ่ม ผลกราฟเดิมยังอยู่')
+    if not isinstance(value, list) or not 1 <= len(value) <= 8:
+        raise HTTPException(502, 'AI ต้องส่งชื่อกลุ่มหัวข้อที่อ่านได้ 1–8 กลุ่ม ผลกราฟเดิมยังอยู่')
     clusters, seen = [], set()
     allowed = set(expected_ids)
     for group in value:

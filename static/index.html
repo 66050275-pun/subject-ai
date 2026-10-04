@@ -311,7 +311,7 @@
       let chatHistory = [];
       let activeDoi = '';
       let activeFile = null;
-      const palette = ['#7c3aed', '#0284c7', '#059669', '#ea580c', '#db2777'];
+      const palette = ['#7c3aed', '#0284c7', '#059669', '#ea580c', '#db2777', '#6366f1', '#a16207', '#0891b2'];
       const datasets = new Map();
       let activeDataset = null;
       let sourceVersion = 0;
@@ -663,7 +663,7 @@
             renderResults(); output.textContent = 'แสดงเจตนาและบริบทบนการ์ดรายการอ้างอิงแล้ว';
           } else if (feature === 'clusters') {
             const nextColors = new Map();
-            if (!Array.isArray(p.clusters) || p.clusters.length < 3 || p.clusters.length > 5) throw new Error('AI ส่งกลุ่มหัวข้อไม่ครบ ผลกราฟเดิมยังอยู่');
+            if (!Array.isArray(p.clusters) || p.clusters.length < 1 || p.clusters.length > 8) throw new Error('AI ไม่ส่งชื่อกลุ่มหัวข้อที่อ่านได้ ผลกราฟเดิมยังอยู่');
             for (const [i, c] of p.clusters.entries()) {
               if (typeof c.name !== 'string' || !c.name.trim() || !Array.isArray(c.ids)) throw new Error('AI ส่งรายละเอียดกลุ่มไม่ถูกต้อง ผลกราฟเดิมยังอยู่');
               for (const id of c.ids) {

@@ -49,7 +49,7 @@ class Cluster(StrictModel):
     ids: list[int] = Field(min_length=0, max_length=100)
 
 class Clusters(StrictModel):
-    clusters: list[Cluster] = Field(min_length=3, max_length=5)
+    clusters: list[Cluster] = Field(min_length=1, max_length=8)
     unassigned_ids: list[int] = Field(default_factory=list, max_length=100)
     warnings: list[str] = Field(default_factory=list, max_length=1)
 

@@ -73,7 +73,7 @@ class ClusterTests(unittest.IsolatedAsyncioTestCase):
     async def test_endpoint_normalizes_or_rejects_without_retry(self):
         papers=[{'id':i,'title':f'Paper {i}'} for i in IDS]
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),base_url='http://test') as client:
-            for value,status in [(GROUPS,200),({'clusters':GROUPS[:-1]},502),({'clusters':[dict(GROUPS[0],ids=[2]),*GROUPS[1:]]},200)]:
+            for value,status in [(GROUPS,200),({'clusters':GROUPS[:-1]},200),({'clusters':[dict(GROUPS[0],ids=[2]),*GROUPS[1:]]},200)]:
                 generate=AsyncMock(return_value=value)
                 with patch.object(ai_features,'source_material',AsyncMock(return_value=('Source','PDF',None))),patch.object(ai_features,'enrich_ai_references',AsyncMock(return_value=papers)),patch.object(ai_features,'generate',generate):
                     response=await client.post('/api/ai/clusters',data={'provider':'maxplus','model':'test','payload':json.dumps({'papers':papers})},headers={'X-AI-API-Key':'fake-test-key'})

@@ -8,7 +8,7 @@ threading.Thread(target=server.serve_forever,daemon=True).start()
 try:
  with sync_playwright() as p:
   browser=p.chromium.launch(executable_path=shutil.which('chromium'),headless=True,args=['--no-sandbox']);page=browser.new_page(viewport={'width':1440,'height':1000});page.route('https://**/*',lambda r:r.abort());errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
-  state={'clusters':0,'papers':24,'invalid':False,'partial':False}
+  state={'clusters':0,'papers':24,'invalid':False,'partial':False,'theme_count':3}
   def api(route):
    path=route.request.url.split('/api/')[-1]
    if path=='ai/providers':data={'providers':{'openai':'test'}}
@@ -17,6 +17,8 @@ try:
     data={'clusters':[{'name':'Methods','ids':list(range(1,9))},{'name':'Results','ids':list(range(9,17))},{'name':'Background','ids':list(range(17,23))}], 'unassigned_ids':[23,24], 'clustering_batches':2,'clustering_requests':3}
     if state['partial']:
      data['clusters'][1]['ids']=[];data['unassigned_ids']=list(range(9,17))+[23,24];data['failed_clustering_batches']=[2]
+    if state['theme_count'] != 3:
+     count=state['theme_count'];size=24//count;data['clusters']=[{'name':f'Theme {i+1}','ids':list(range(i*size+1,(i+1)*size+1))} for i in range(count)];data['unassigned_ids']=[];data['failed_clustering_batches']=[]
     if state['invalid']:data['clusters'][1]['ids']=[1]
    else:
     papers=[{'reference_number':i,'title':f'Paper {i}','original_text':f'Demo paper {i}','year':'2024','doi':None,'oa_pdf_url':None,'scholar_url':'https://example.org','access_status':'scholar_search','citation_contexts':[]} for i in range(1,state['papers']+1)]
@@ -31,6 +33,9 @@ try:
   page.locator('.sidebar-settings').click();page.locator('#openai-key').fill('fake-key');page.locator('#settings-close').click();page.locator('#settings-drawer').wait_for(state='hidden')
   page.locator('[data-ai=clusters]').click();page.locator('#ai-output').filter(has_text='AI ยังไม่จัดกลุ่ม 2').wait_for();assert page.locator('#network-legend').inner_text().count('ยังไม่จัดกลุ่ม')==1
   assert 'ประมวลผล 2 ชุด' in page.locator('#ai-output').inner_text();state['partial']=True;page.locator('[data-ai=clusters]').click();page.locator('#ai-output').filter(has_text='อ่านผลไม่ได้ 1 ชุด').wait_for();assert 'จัดกลุ่มได้ 14/24' in page.locator('#ai-output').inner_text();assert 'ยังไม่จัดกลุ่ม · 10' in page.locator('#network-legend').inner_text();before=page.locator('#network-legend').inner_text();state['invalid']=True;page.locator('[data-ai=clusters]').click();page.locator('#ai-output').filter(has_text='ผลกราฟเดิมยังอยู่').wait_for();assert page.locator('#network-legend').inner_text()==before
+  state['invalid']=False;state['partial']=False
+  for count in (2,6):
+   state['theme_count']=count;page.locator('[data-ai=clusters]').click();page.locator('#ai-output').filter(has_text='จัดกลุ่มได้ 24/24').wait_for();assert page.locator('#network-legend .graph-legend-chip').count()==count
   state['papers']=101;page.locator('#doi-input').fill('10.1234/large');page.locator('#doi-button').click();page.locator('#total-stat').filter(has_text='101').wait_for();calls=state['clusters'];page.locator('[data-ai=clusters]').click();page.locator('#ai-output').filter(has_text='3–100').wait_for();assert state['clusters']==calls
   assert not errors,errors;browser.close()
  print('PASS: grey unassigned nodes, invalid response retains themes, >100 blocks paid request')
