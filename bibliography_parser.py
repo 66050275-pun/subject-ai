@@ -9,7 +9,19 @@ YEAR = re.compile(r'(?<!\d)((?:18|19|20)\d{2})([a-z])?(?!\d)')
 DOI = re.compile(r'\b10\.\d{4,9}/[^\s<>\]\[{}\"\']+', re.I)
 QUOTED = re.compile(r'[“\"‘]([^”\"’]{3,}?)[”\"’]')
 PARTICLES = {'and', 'et', 'al', 'van', 'von', 'de', 'del', 'da', 'di', 'la', 'le', 'der', 'den', 'jr', 'Jr'}
-VENUE = re.compile(r'^(?:Elsevier\b|Springer\b|Technical\s+report\b|J\.\s+(?:Power|Energy|Chem|Phys|Electro|Mater|Comput|Test|Stat|Sci|Appl|Clin|Med)\b|Nat\.\s|Eng\.\s|Phys\.\s|Proc\.\s|Journal\s+of\s|Proceedings\s+of\s|vol\.?\s*\d|pp?\.?\s*\d)', re.I)
+VENUE = re.compile(
+    r'^(?:Elsevier\b|Springer\b|Technical\s+report\b|'
+    r'J\.\s+(?:Power|Energy|Chem|Phys|Electro(?:chem)?|Mater|Comput|Test|Stat|Sci|Appl|Clin|Med)\b|'
+    r'Nat\.\s|Eng\.\s|Phys\.\s|Proc\.\s|'
+    r'IEEE\s+Trans\b|ACS\s+Energy\s+Lett\b|'
+    r'Renew\.\s+Sustain\b|Resour\.\s+Conserv\b|Adv\.\s+(?:Energy|Mater)\b|'
+    r'Appl\.\s+(?:Energy|Phys|Sci)\b|Mater\.\s+Sci\b|'
+    r'Energy\s+(?:Storage\s+Mater\b|Convers\.\s+Manage\b|Rev\.)|Energy\s+\d|'
+    r'Journal\s+of\s|Proceedings\s+of\s|vol\.?\s*\d|pp?\.?\s*\d)', re.I
+)
+# Journal volume/date/page or article-number tails are bibliographic locators,
+# including unfamiliar journals whose abbreviations are absent from VENUE.
+PUBLICATION_LOCATOR = re.compile(r'\b\d+[a-z]?\s*\((?:18|19|20)\d{2}\)\s*\d+(?:\s*[-–—]\s*\d+)?\s*[.;]?$', re.I)
 
 
 def normalize_text(text):
@@ -33,9 +45,9 @@ def is_author_prefix(prefix):
     # Restrict prose continuations, venues and titles with lowercase words.
     if not all(w[0].isupper() or w in PARTICLES for w in words):
         return False
-    if VENUE.match(prefix):
-        return False
     parts = re.split(r'[,;]|\band\b|&', prefix)
+    if any(VENUE.match(part.strip()) for part in parts):
+        return False
     last = re.findall(r'[^\W\d_]+', parts[-1])
     if len(last) >= 2:
         return True
@@ -163,7 +175,7 @@ def citation_fields(text):
     title = re.sub(r'[.!?]\s*(?:18|19|20)\d{2}[a-z]?\s*$', '', title).strip()
     title = re.sub(r'(?<=[a-zÀ-ÖØ-öø-ÿ])-\s+(?=[a-zÀ-ÖØ-öø-ÿ])', '', title)
     # Require a real title segment, never a journal abbreviation or page number.
-    if not re.search(r'[^\W\d_]{3}', title) or VENUE.match(title) or re.search(
+    if not re.search(r'[^\W\d_]{3}', title) or VENUE.match(title) or PUBLICATION_LOCATOR.search(title) or re.search(
         r'https?://|10\.\d{4,9}/|\b(?:vol(?:ume)?|pp?|pages?)\.?\s*\d|\b\d{2,4}\s*[-–—]\s*\d{2,4}\b', title, re.I
     ):
         title = ''

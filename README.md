@@ -33,7 +33,7 @@ Open <http://127.0.0.1:8000>. The health endpoint is <http://127.0.0.1:8000/heal
 4. Use the graph to jump to a reference. Drag nodes to rearrange them, drag the background to pan, and use the wheel or zoom buttons to change scale. The References and Citation tabs separate the bibliography from PDF-linked citations.
 5. Search the result list, then export results as CSV or JSON.
 
-Crossref's polite-pool contact is optional. Set `PAPERREF_CONTACT_EMAIL` before starting Uvicorn to include it in the Crossref User-Agent. The browser loads Tailwind CSS and fonts from public CDNs.
+Crossref's polite-pool contact is optional. Set `PAPERREF_CONTACT_EMAIL` before starting Uvicorn to include it in Crossref's `mailto` parameter and User-Agent. The browser loads Tailwind CSS and fonts from public CDNs.
 
 ## API endpoints
 
@@ -75,3 +75,5 @@ Missing optional credentials skip that service; other sources continue. arXiv re
 PDF layout improvements, numbered coverage recovery and offline corpus evaluation are documented in [PDF_EXTRACTION_TESTS.md](PDF_EXTRACTION_TESTS.md). Titleless entries remain available as full citations; AI omissions are labelled separately from generated results.
 
 The code-only extractor now handles wrapped author-date lists and additional citation styles, preserves printed authors and short titles, and reports numbered coverage/uncertainty without an AI key. See [CODE_EXTRACTION_REPORT.md](CODE_EXTRACTION_REPORT.md) for the before/after corpus results and remaining limits.
+
+Title recovery now searches omitted-title citations by author/year/volume/first page, repairs author-only headings, and supports saved-history refresh without an AI key. See [TITLE_METADATA_RECOVERY.md](TITLE_METADATA_RECOVERY.md) for provider configuration, optional Google Scholar through SerpAPI, matching rules and live-test limits.

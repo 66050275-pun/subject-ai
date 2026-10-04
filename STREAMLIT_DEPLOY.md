@@ -25,6 +25,7 @@ PAPERREF_CONTACT_EMAIL = "you@example.com"
 OPENALEX_API_KEY = "your-openalex-key"
 SEMANTIC_SCHOLAR_API_KEY = "your-semantic-scholar-key"
 CORE_API_KEY = "your-core-key"
+# SERPAPI_API_KEY = "your-serpapi-key" # Optional third-party Google Scholar API
 ```
 
 ดูแม่แบบที่ `.streamlit/secrets.toml.example` คีย์ใน Cloud Secrets ไม่ต้องอยู่ใน GitHub และไฟล์ `.streamlit/secrets.toml` ถูก gitignore ไว้สำหรับการทดสอบในเครื่อง
@@ -107,3 +108,5 @@ python tests/browser_history.py
 ## Research Workspace
 
 ในหมวดประวัติ ค้นหาตามชื่อ/ผู้แต่ง/ปี เลือกหลายงานเพื่อหาอ้างอิงร่วมหรือ export BibTeX และเลือก 2–3 งานเพื่อเปรียบเทียบด้วย provider/key เดิม มีโหมด Incognito สำหรับหยุดทั้งบันทึกและอัปเดตในแท็บนี้ รายละเอียด architecture, API และข้อจำกัดอยู่ใน [HISTORY_WORKSPACE.md](HISTORY_WORKSPACE.md)
+
+การเติมชื่อเรื่องจริงทำผ่าน Crossref/OpenAlex/Semantic Scholar โดยไม่ใช้ AI key หากต้องการค้น Google Scholar อัตโนมัติโดยตรง ให้ตั้ง `SERPAPI_API_KEY` ใน Cloud Secrets เป็นตัวเลือก บริการ SerpAPI มีโควตา/ค่าใช้จ่ายแยก ไม่ใช่ Google API ทางการ รายละเอียดดู [TITLE_METADATA_RECOVERY.md](TITLE_METADATA_RECOVERY.md)

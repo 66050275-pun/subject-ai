@@ -57,3 +57,5 @@ Public fixture provenance and hashes are recorded in [PDF_CORPUS_REPORT.json](PD
 - Three-column text is handled best when the PDF's native order is coherent; arbitrary geometric layouts and fragmented author-year entries remain best effort.
 - Chapter-specific bibliographies, handwritten references and heavily corrupted text layers may need a bibliography-only PDF and manual verification.
 - Missing paper titles remain unknown until an academic metadata provider finds a reliable match. Do not treat an inferred title or PDF availability as verified evidence.
+
+Latest omitted-title metadata recovery and live quota limits: [TITLE_METADATA_RECOVERY.md](TITLE_METADATA_RECOVERY.md).

@@ -17,6 +17,11 @@ from resolver import fetch_doi_summary_material, enrich_ai_references, resolve_r
 
 router = APIRouter()
 
+
+def title_updates(papers):
+    fields = ('id', 'title', 'matched_title', 'title_source', 'title_status', 'doi', 'year', 'authors', 'scholar_url', 'paper_url', 'metadata_sources', 'source_links', 'oa_search')
+    return [{k: p[k] for k in fields if k in p} for p in papers if 'title_status' in p]
+
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
@@ -182,7 +187,7 @@ async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'ex
                 await progress({'type': 'progress', 'stage': 'metadata', 'completed': 0, 'total': 0})
             enriched = await enrich_ai_references(papers)
             result = await cluster_in_batches(enriched, provider, model, key, base_url, generate, progress)
-            return {**result, 'provider': provider, 'model': model, 'source': source}
+            return {**result, 'provider': provider, 'model': model, 'source': source, 'resolved_papers': title_updates(enriched)}
         if stream:
             return ai_result_stream(work, 'จัดกลุ่มกราฟไม่สำเร็จ ผลกราฟเดิมยังอยู่')
         return await work()
@@ -195,6 +200,8 @@ async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'ex
         schema = Intents
     else:
         papers = await enrich_ai_references(papers)
+        if feature == 'clusters' and not any(p.get('title') or p.get('abstract') for p in papers):
+            raise HTTPException(422, 'ยังไม่พบชื่อเรื่องหรือ abstract สำหรับวางแผนธีม กดเติมชื่อเรื่องจริงก่อน · ไม่มีการเรียก AI')
         evidence = json.dumps([{k: (v[:(250 if k == 'title' else 400)] if feature == 'clusters' and isinstance(v, str) else v) for k, v in p.items() if k in ('id', 'title', 'doi', 'abstract', 'evidence_level')} for p in papers], ensure_ascii=False)
         if feature == 'clusters':
             prompt = ('Group ALL supplied ids exactly once into 3–5 themes. State themes based on metadata '
@@ -215,6 +222,13 @@ async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'ex
     result = await generate(provider, model, key, prompt, structured=schema is not None, max_output_tokens=6000, base_url=base_url)
     if feature == 'clusters':
         result = normalize_clusters(result, ids)
+        unknown = {p['id'] for p in papers if not p.get('title') and not p.get('abstract')}
+        for cluster in result['clusters']:
+            cluster['ids'] = [i for i in cluster['ids'] if i not in unknown]
+        unassigned = sorted(set(result.get('unassigned_ids', [])) | unknown)
+        if unassigned:
+            result['unassigned_ids'] = unassigned
+            result['warnings'] = [f'ยังไม่จัดกลุ่ม {len(unassigned)} รายการ · ไม่มีชื่อเรื่อง/abstract หรือ AI ไม่ได้จัดกลุ่ม แสดงสีเทาโดยไม่เดาธีมให้']
     if schema:
         try:
             result = schema.model_validate(result).model_dump()
@@ -235,7 +249,7 @@ async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'ex
             raise HTTPException(502, 'ผล AI ไม่ตรง schema หรือเลขรายการไม่ครบ กรุณาลองลดจำนวนรายการ') from None
     else:
         result = {'answer' if feature == 'qa' else 'synthesis': result}
-    return {**result, 'provider': provider, 'model': model or DEFAULT_MODELS[provider], 'source': source}
+    return {**result, 'provider': provider, 'model': model or DEFAULT_MODELS[provider], 'source': source, 'resolved_papers': title_updates(papers)}
 
 
 async def extract_bibliography_result(data, text, provider, model, key, base_url, progress=None):

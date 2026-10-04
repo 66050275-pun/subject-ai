@@ -11,7 +11,7 @@ from streamlit_frontend import frontend_html
 BASE_DIR = Path(__file__).resolve().parent
 st.set_page_config(page_title='PaperRef Finder', page_icon='📚', layout='wide', initial_sidebar_state='collapsed')
 
-for name in ('PAPERREF_CONTACT_EMAIL', 'OPENALEX_API_KEY', 'SEMANTIC_SCHOLAR_API_KEY', 'CORE_API_KEY'):
+for name in ('PAPERREF_CONTACT_EMAIL', 'OPENALEX_API_KEY', 'SEMANTIC_SCHOLAR_API_KEY', 'CORE_API_KEY', 'SERPAPI_API_KEY'):
     try:
         value = st.secrets[name]
         if isinstance(value, str) and value:

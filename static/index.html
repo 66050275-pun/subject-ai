@@ -61,10 +61,12 @@
           </label>
           <p class="oa-privacy-note">อีเมลนี้ส่งให้ Unpaywall เพื่อใช้ API และไม่ถูกบันทึกโดยแอป</p>
           <div><button id="oa-search-button" type="button">ค้น PDF เพิ่มทุกแหล่ง →</button>
+            <button id="metadata-search-button" type="button" disabled>เติมชื่อเรื่องจริง →</button>
             <button id="export-pdf-links" type="button">↓ ส่งออกลิงก์ PDF</button></div>
         </div>
         <div id="oa-progress" class="operation-progress hidden"></div>
         <p id="oa-status" role="status" aria-live="polite">พบลิงก์จากฐานข้อมูลไม่ได้รับรองว่าดาวน์โหลดได้จริงทุกลิงก์ · มีป้ายแยกฉบับผู้เขียนและ preprint</p>
+        <div class="metadata-search-progress"><div id="metadata-progress" class="operation-progress hidden"></div><p id="metadata-status" role="status" aria-live="polite">เติมชื่อจากข้อมูลอ้างอิงผ่านฐานข้อมูลวิชาการ · ไม่ใช้ AI key · ตรวจ DOI ผู้แต่ง และปีก่อนใช้</p></div>
       </section>
       <div class="flex flex-col justify-between gap-5 border-b border-slate-200 pb-6 sm:flex-row sm:items-end">
         <div>
@@ -316,6 +318,7 @@
       let activeDataset = null;
       let sourceVersion = 0;
       let oaController = null;
+      let metadataController = null;
       const datasetLabels = {code: 'สกัดด้วยโค้ด', ai: 'สกัดด้วย AI', doi: 'จากฐานข้อมูล DOI'};
       function saveDataset() {
         const record = datasets.get(activeDataset);
@@ -327,6 +330,7 @@
       }
       function resetDatasets() {
         oaController?.abort();
+        metadataController?.abort();
         datasets.clear(); activeDataset = null; sourceVersion += 1;
         selectedPapers.clear(); clusterColors.clear(); chatHistory = [];
         document.getElementById('chat-log').textContent = '';
@@ -339,14 +343,16 @@
         for (const kind of ['code', 'ai', 'doi']) {
           const button = document.getElementById('dataset-' + kind);
           const record = datasets.get(kind);
-          button.disabled = !record || aiBusy;
+          button.disabled = !record || aiBusy || Boolean(metadataController);
           button.setAttribute('aria-pressed', String(activeDataset === kind));
           document.getElementById('dataset-' + kind + '-count').textContent = record ? record.payload.results.length : '—';
         }
+        document.getElementById('metadata-search-button').disabled = !activeDataset || aiBusy || Boolean(oaController) || Boolean(metadataController);
+        document.getElementById('oa-search-button').disabled = !activeDataset || aiBusy || Boolean(oaController) || Boolean(metadataController);
       }
       function updateSelection() { document.getElementById('selection-count').textContent = `${activeDataset ? datasetLabels[activeDataset] + ' · ' : ''}เลือกเปเปอร์บนการ์ด ${selectedPapers.size}/5 รายการ เพื่อสังเคราะห์หรือถาม–ตอบ`; }
       for (const button of document.querySelectorAll('[data-dataset]')) {
-        button.onclick = () => { const record = datasets.get(button.dataset.dataset); if (record && !aiBusy) displayPayload(record.payload, button.dataset.dataset, true); };
+        button.onclick = () => { const record = datasets.get(button.dataset.dataset); if (record && !aiBusy && !metadataController) displayPayload(record.payload, button.dataset.dataset, true); };
       }
       function displayPayload(payload, kind = (payload.mode === 'doi' ? 'doi' : 'code'), restoring = false, fromHistory = false) {
         saveDataset();
@@ -359,6 +365,7 @@
         document.getElementById('summary-output').classList.toggle('hidden',!savedSummary);
         record.analysis=payload.workspace?.analysis||record.analysis;
         document.getElementById('oa-status').textContent = record.oa_status || 'พบลิงก์จากฐานข้อมูลไม่ได้รับรองว่าดาวน์โหลดได้จริงทุกลิงก์ · มีป้ายแยกฉบับผู้เขียนและ preprint';
+        document.getElementById('metadata-status').textContent = record.metadata_status || 'เติมชื่อจากข้อมูลอ้างอิงผ่านฐานข้อมูลวิชาการ · ไม่ใช้ AI key · ตรวจ DOI ผู้แต่ง และปีก่อนใช้';
         selectedPapers.clear(); for (const id of record.selected) selectedPapers.add(id);
         clusterColors = new Map(record.colors); chatHistory = [...record.history];
         document.getElementById('network-legend').innerHTML = '<span>● สีเขียว: มี citation link · สีเทา: ยังไม่พบ citation link</span>';
@@ -431,7 +438,7 @@
         record.persistTimer=setTimeout(()=>record.historyId?.then(id=>{if(id)window.PaperRefHistory.saveSession(record.payload, kind,id);}),300);
       }
       window.PaperRefHistory.onRestore((payload, kind, historyId) => {
-        if (aiBusy || codeBusy || doiBusy || oaController) { document.getElementById('history-status').textContent = 'รอการประมวลผลปัจจุบันเสร็จก่อนเปิดประวัติ'; return false; }
+        if (aiBusy || codeBusy || doiBusy || oaController || metadataController) { document.getElementById('history-status').textContent = 'รอการประมวลผลปัจจุบันเสร็จก่อนเปิดประวัติ'; return false; }
         resetDatasets(); selectedFile = null; activeFile = null; fileInput.value = ''; analyzeButton.disabled = true;
         document.getElementById('file-row').classList.add('hidden');
         document.getElementById('doi-input').value = kind === 'doi' ? (payload.source_paper?.doi || '') : '';
@@ -574,6 +581,7 @@
       let aiBusy = false;
       async function callAI(feature, extra = {}) {
         if (oaController) throw new Error('รอการค้นหา PDF ปัจจุบันเสร็จก่อน');
+        if (metadataController) throw new Error('รอการเติมชื่อเรื่องปัจจุบันเสร็จก่อน');
         const key = document.getElementById('openai-key').value.trim();
         if (!key) { window.PaperRefSettings.open('ai'); throw new Error('กรุณาเชื่อมต่อ AI และกรอก API key ของค่ายที่เลือกก่อน'); }
         if (providerSelect.value === 'maxplus' && !document.getElementById('summary-model').value.trim()) throw new Error('เลือกหรือกรอกชื่อโมเดล MaxPlus ก่อน');
@@ -603,6 +611,15 @@
             ? await readExtractionStream(response, feature) : await response.json();
           if (!response.ok) throw new Error(typeof payload.detail === 'string' ? payload.detail : 'ข้อมูลคำขอไม่ถูกต้อง');
           if (requestVersion !== sourceVersion || requestDataset !== activeDataset) throw new Error('งานต้นทางหรือชุดผลลัพธ์เปลี่ยนแล้ว กรุณาเรียกเครื่องมือกับชุดปัจจุบัน');
+          if (Array.isArray(payload.resolved_papers)) {
+            for (const result of payload.resolved_papers) {
+              const item = allResults.find(p => p.reference_number === (result.reference_number ?? result.id));
+              if (item) mergeMetadataResult(item,result);
+            }
+            renderResults(); renderNetwork();
+            const record = datasets.get(activeDataset);
+            record?.historyId?.then(id => { if (id && !window.PaperRefHistory.isEphemeral()) window.PaperRefHistory.save(record.payload, requestDataset, id); });
+          }
           return payload;
         } finally {
           progress.finish(progressId);
@@ -732,11 +749,12 @@
         }
       }
       document.getElementById('oa-search-button').onclick = async () => {
-        if (oaController || aiBusy || !activeDataset) { showAlert('รอการค้นหาปัจจุบันเสร็จก่อน'); return; }
+        if (oaController || metadataController || aiBusy || !activeDataset) { showAlert('รอการค้นหาปัจจุบันเสร็จก่อน'); return; }
         const email = document.getElementById('oa-contact-email');
         if (!email.reportValidity()) return;
         const record = datasets.get(activeDataset); const kind = activeDataset; const version = sourceVersion;
         const controller = new AbortController(); oaController = controller;
+        updateDatasetTabs();
         const button = document.getElementById('oa-search-button'); button.disabled = true;
         const output = document.getElementById('oa-status'); output.textContent = 'กำลังค้นหา PDF ฉบับสำรอง…';
         progress.start('oa-progress', 'กำลังค้นหา PDF จากฐานข้อมูลเปิด…');
@@ -791,8 +809,87 @@
           }
           consume(pending); if (!doneEvent && version === sourceVersion) throw new Error('การเชื่อมต่อจบก่อนค้นครบ ผลที่ค้นพบแล้วและชุดเดิมยังอยู่');
         } catch (error) { if (error.name !== 'AbortError' && version === sourceVersion && activeDataset === kind) output.textContent = error.message; }
-        finally { progress.finish('oa-progress'); await reader?.cancel().catch(() => {}); if (oaController === controller) oaController = null; button.disabled = false; }
+        finally { progress.finish('oa-progress'); await reader?.cancel().catch(() => {}); if (oaController === controller) oaController = null; updateDatasetTabs(); }
       };
+      document.getElementById('metadata-search-button').onclick = async () => {
+        if (metadataController || oaController || aiBusy || !activeDataset) { showAlert('รอการค้นหาปัจจุบันเสร็จก่อน'); return; }
+        const kind = activeDataset, record = datasets.get(kind), version = sourceVersion;
+        const controller = new AbortController(); metadataController = controller; updateDatasetTabs();
+        const output = document.getElementById('metadata-status');
+        output.textContent = 'กำลังค้นหาชื่อเรื่องจาก DOI และข้อความอ้างอิง…';
+        progress.start('metadata-progress', 'กำลังค้นหาชื่อเรื่องจากฐานข้อมูลวิชาการ…');
+        let reader, doneEvent = false;
+        const current = () => version === sourceVersion && datasets.get(kind) === record;
+        const sourceIssues = new Set();
+        const addIssues = value => {
+          if (Array.isArray(value)) { for (const message of value) if (typeof message === 'string') sourceIssues.add(message); }
+          else if (value && typeof value === 'object') { for (const [source, state] of Object.entries(value)) if (typeof state === 'string' && !['found', 'not found', 'skipped', 'disabled'].includes(state)) sourceIssues.add(source + ': ' + state); }
+        };
+        try {
+          const papers = record.payload.results.map(p => ({reference_number: p.reference_number,
+            title: String(p.title || '').slice(0,1200), matched_title: p.matched_title || null,
+            original_text: String(p.original_text || '').slice(0,4000), doi: p.doi || null, year: p.year ? String(p.year) : null}));
+          const response = await fetch('/api/metadata/search', {method:'POST', signal:controller.signal,
+            headers:{'Content-Type':'application/json'}, body:JSON.stringify({papers})});
+          if (!response.ok) { const error = await response.json(); throw new Error(typeof error.detail === 'string' ? error.detail : 'ข้อมูลค้นหาชื่อเรื่องไม่ถูกต้อง'); }
+          reader = response.body.getReader(); const decoder = new TextDecoder(); let pending = '';
+          const consume = line => {
+            if (!line.trim() || !current()) return;
+            const event = JSON.parse(line);
+            if (event.type === 'error') throw new Error(event.detail || 'ค้นหาชื่อเรื่องไม่สำเร็จ');
+            if (event.type === 'progress' || event.type === 'item') progress.update('metadata-progress', 'กำลังค้นหาชื่อเรื่องจากฐานข้อมูลวิชาการ…', event.completed, event.total);
+            if (event.type === 'item' && event.result) {
+              const result = event.result;
+              addIssues(result.metadata_search); addIssues(event.source_errors);
+              const item = record.payload.results.find(p => p.reference_number === result.reference_number);
+              if (item) mergeMetadataResult(item,result);
+              record.metadata_status = `ค้นชื่อแล้ว ${event.completed}/${event.total} รายการ`;
+              if (activeDataset === kind) { output.textContent = record.metadata_status; renderResults(); }
+            }
+            if (event.type === 'done') {
+              doneEvent = true; addIssues(event.source_errors);
+              const found = record.payload.results.filter(p => p.matched_title || p.title).length;
+              const recovered = Number.isInteger(event.recovered) ? event.recovered : record.payload.results.filter(p => p.title_status === 'verified').length;
+              const total = Number.isInteger(event.total) ? event.total : record.payload.results.length;
+              const unresolved = Number.isInteger(event.unresolved) ? event.unresolved : Math.max(0,total-found);
+              record.metadata_status = `ค้นครบ ${total} รายการ · เติมชื่อจากฐานข้อมูล ${recovered} รายการ · ยังไม่ยืนยันชื่อ ${unresolved} รายการ` + (sourceIssues.size ? ' · แหล่งที่ค้นได้ไม่ครบ: ' + [...sourceIssues].join(' / ') : '');
+              if (activeDataset === kind) { output.textContent = record.metadata_status; renderResults(); renderNetwork(); }
+              record.historyId?.then(id => { if (id && !window.PaperRefHistory.isEphemeral()) window.PaperRefHistory.save(record.payload, kind, id); });
+            }
+          };
+          while (true) {
+            const {value,done} = await reader.read(); pending += decoder.decode(value,{stream:!done});
+            let end; while ((end=pending.indexOf('\n')) >= 0) { consume(pending.slice(0,end)); pending=pending.slice(end+1); }
+            if (done) break;
+          }
+          consume(pending);
+          if (!doneEvent && current()) throw new Error('การเชื่อมต่อจบก่อนค้นครบ ผลที่เติมแล้วและข้อมูลเดิมยังอยู่');
+        } catch (error) {
+          if (error.name !== 'AbortError' && current() && activeDataset === kind) { output.textContent = error.message; renderResults(); renderNetwork(); }
+        } finally {
+          progress.finish('metadata-progress'); await reader?.cancel().catch(() => {});
+          if (metadataController === controller) metadataController = null;
+          updateDatasetTabs();
+        }
+      };
+      function mergeMetadataResult(item,result) {
+        // The backend identifies author-only legacy headings as unresolved.
+        if (result.title_status === 'unresolved' && !result.title && !item.matched_title && item.title_status !== 'verified') item.title = '';
+        // Empty/failed lookups never erase a title, citation context or an existing PDF.
+        for (const key of ['title','matched_title','title_source','title_status','scholar_url','authors_source','year','doi','paper_url','abstract','journal']) {
+          if (['title_status','title_source'].includes(key) && item.title_status === 'verified' && result.title_status !== 'verified') continue;
+          if (typeof result[key] === 'string' && result[key].trim()) item[key] = result[key];
+        }
+        if (Array.isArray(result.authors) && result.authors.length) item.authors = result.authors;
+        for (const key of ['metadata_sources','source_links']) {
+          const values = Array.isArray(result[key]) ? result[key] : [];
+          const old = Array.isArray(item[key]) ? item[key] : [];
+          item[key] = [...old];
+          for (const value of values) if (key === 'metadata_sources' ? typeof value === 'string' && !item[key].includes(value) : value?.url && !item[key].some(link => link.url === value.url)) item[key].push(value);
+        }
+        if (result.metadata_search && typeof result.metadata_search === 'object') item.metadata_search = {...item.metadata_search, ...result.metadata_search};
+      }
+      function referenceTitle(item) { return item.matched_title || item.title || `อ้างอิง #${item.reference_number} · รอค้นชื่อเรื่อง`; }
       function accessBadgeStyle(status) {
         if (status === 'pdf_available') return 'bg-emerald-100 text-emerald-800';
         if (status === 'open_source_record') return 'bg-sky-100 text-sky-800';
@@ -849,9 +946,9 @@
           number.textContent = String(item.reference_number).padStart(2, '0');
           const content = document.createElement('div'); content.className = 'min-w-0 flex-1';
           const title = document.createElement('h4'); title.className = 'font-semibold leading-6 text-slate-900';
-          const citationTitle = String(item.original_text || '').replace(/^\s*(?:\[\d+\]|\d+[.)])\s*/, '');
-          title.textContent = item.matched_title || item.title || citationTitle || 'ไม่สามารถแยกชื่อเรื่องได้';
+          title.textContent = referenceTitle(item);
           content.append(title);
+          if (item.title_source) { const source = document.createElement('p'); source.className = 'mt-1 text-xs text-slate-500'; source.textContent = 'ชื่อเรื่องจาก ' + item.title_source; content.append(source); }
           const meta = document.createElement('p'); meta.className = 'mt-1 text-xs text-slate-500';
           meta.textContent = [item.year, item.doi ? 'DOI: ' + item.doi : null].filter(Boolean).join(' · ') || 'ยังไม่พบ DOI';
           content.append(meta);

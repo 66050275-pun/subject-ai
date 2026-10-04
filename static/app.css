@@ -1559,6 +1559,8 @@ label:has(>#search-input)>svg {
 .oa-search-actions button:first-child { background: #205642; color: white; }
 .oa-search-actions button:disabled { opacity: .5; cursor: wait; }
 .oa-search-panel #oa-status { grid-column: 1 / -1; margin: 0; overflow-wrap: anywhere; }
+.metadata-search-progress { grid-column: 1 / -1; }
+.metadata-search-progress p { margin: 0; overflow-wrap: anywhere; }
 .oa-copy-list { flex-basis: 100%; font-size: 12px; color: #205642; }
 .oa-copy-list summary { cursor: pointer; padding: 9px 0; }
 .oa-copy-list > div { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 0; }

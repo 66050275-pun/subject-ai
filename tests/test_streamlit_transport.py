@@ -51,6 +51,12 @@ class TransportTests(unittest.TestCase):
         frames = []; asyncio.run(transport.forward(request, frames.append))
         self.assertEqual(frames[0]['status'], 422)
 
+    def test_title_search_route_is_forwarded_without_ai_credentials(self):
+        request = transport.make_request(command(path='/api/metadata/search', method='POST',
+            headers={'Content-Type': 'application/json'}, body={'kind': 'text', 'text': json.dumps({'papers': []})}))
+        frames = []; asyncio.run(transport.forward(request, frames.append))
+        self.assertEqual(frames[0]['status'], 422)  # API validation, not transport rejection.
+
     def test_requests_are_not_repeated_on_streamlit_rerun(self):
         session = transport.BrowserSession(); ended = threading.Event(); calls = []
         async def app(scope, receive, send):

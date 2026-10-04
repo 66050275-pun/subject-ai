@@ -10,6 +10,7 @@
     const el = make('text', {x, y, ...attrs}); el.textContent = value; return el;
   };
   const short = (value, count) => Array.from(String(value || '')).slice(0, count).join('');
+  const paperTitle = item => item.matched_title || item.title || `อ้างอิง #${item.reference_number} · รอค้นชื่อเรื่อง`;
   const titleLines = value => {
     const cut = str => {
       if (Array.from(str).length <= 27) return [str, ''];
@@ -88,7 +89,7 @@
         if (!node.item) { document.getElementById('graph-inspector').classList.add('hidden'); return; }
         const item = node.item;
         document.getElementById('graph-inspector').classList.remove('hidden');
-        document.getElementById('graph-paper-title').textContent = item.matched_title || item.title || item.original_text;
+        document.getElementById('graph-paper-title').textContent = paperTitle(item);
         document.getElementById('graph-paper-meta').textContent = `Reference ${item.reference_number} · ${item.year || 'ไม่พบปี'} · ${item.access_label || 'ยังไม่พบลิงก์ PDF'}`;
         document.getElementById('graph-open-paper').onclick = () => onOpen(item);
         const select = document.getElementById('graph-select-paper');
@@ -104,7 +105,7 @@
         const el = make('g', {'data-graph-node': node.kind, tabindex: '0', role: 'button',
           'aria-label': node.kind === 'root' ? 'งานต้นทาง: ' + sourceName : node.kind === 'group'
             ? node.group.name + ': ' + node.group.items.length + ' รายการ'
-            : 'Reference ' + node.item.reference_number + ': ' + (node.item.matched_title || node.item.title || node.item.original_text),
+            : 'Reference ' + node.item.reference_number + ': ' + paperTitle(node.item),
           style: 'cursor:grab'});
         node.el = el;
         const body = make('rect', {x: -node.width / 2, y: -node.height / 2, width: node.width,
@@ -126,7 +127,7 @@
         } else {
           el.append(make('rect', {x: -111, y: -26, width: 29, height: 29, rx: 8, fill: node.color + '18'}));
           el.append(text(node.item.reference_number, -96, -7, {'text-anchor': 'middle', fill: node.color, 'font-size': 10, 'font-weight': 700}));
-          const title = String(node.item.matched_title || node.item.title || node.item.original_text || 'ไม่พบชื่อเรื่อง');
+          const title = String(paperTitle(node.item));
           const [firstLine, secondLine] = titleLines(title);
           el.append(text(firstLine, -72, -15, {fill: '#263d30', 'font-size': 11, 'font-weight': 600}));
           el.append(text(secondLine, -72, 2,

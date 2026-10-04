@@ -6,6 +6,7 @@ import asyncio
 import html
 import os
 import re
+import time
 from dataclasses import replace
 from difflib import SequenceMatcher
 from urllib.parse import quote, quote_plus, unquote, urlsplit
@@ -13,6 +14,7 @@ from urllib.parse import quote, quote_plus, unquote, urlsplit
 import httpx
 
 from extractor import Reference
+from bibliography_parser import citation_fields, is_author_prefix, normalize_text, VENUE
 from open_access import OADiscovery, location, merge_locations, openalex_locations, openalex_records, safe_url
 
 REQUEST_TIMEOUT_SECONDS = 8.0
@@ -54,6 +56,10 @@ def _normalize(value: str) -> str:
 async def _academic_get(client, url, **kwargs):
     """Optional academic API credentials go only to their own fixed API host."""
     host = urlsplit(url).hostname
+    if host == 'api.crossref.org':
+        contact = os.getenv('PAPERREF_CONTACT_EMAIL', '').strip()
+        if contact:
+            kwargs['params'] = {**(kwargs.get('params') or {}), 'mailto': contact}
     if host == 'api.openalex.org':
         key = os.getenv('OPENALEX_API_KEY', '').strip()
         if key:
@@ -62,11 +68,40 @@ async def _academic_get(client, url, **kwargs):
         key = os.getenv('SEMANTIC_SCHOLAR_API_KEY', '').strip()
         if key:
             kwargs['headers'] = {**(kwargs.get('headers') or {}), 'x-api-key': key}
-    return await client.get(url, **kwargs)
+    # One request-scoped cache/gate; no user metadata survives the client lifetime.
+    state = getattr(client, '_paperref_academic', None)
+    if state is None:
+        state = {'cache': {}, 'blocked': {}, 'gates': {}, 'next_request': {}}
+        client._paperref_academic = state
+    key = (url, tuple(sorted((str(k), str(v)) for k, v in (kwargs.get('params') or {}).items())))
+    if key not in state['cache']:
+        async def fetch():
+            gate = state['gates'].setdefault(host, asyncio.Semaphore(1))
+            async with gate:
+                if host in state['blocked']:
+                    return state['blocked'][host]
+                interval = 1.5 if host == 'api.semanticscholar.org' else 1.0
+                wait = state['next_request'].get(host, 0) - time.monotonic()
+                if wait > 0:
+                    await asyncio.sleep(wait)
+                state['next_request'][host] = time.monotonic() + interval
+                response = await client.get(url, **kwargs)
+                if response.status_code in (401, 403, 429):
+                    state['blocked'][host] = response
+                return response
+        if len(state['cache']) >= 512:
+            for old_key, task in list(state['cache'].items()):
+                if task.done():
+                    del state['cache'][old_key]
+                    break
+        state['cache'][key] = asyncio.create_task(fetch())
+    return await state['cache'][key]
 
 
 def _usable_title(value: str | None) -> bool:
     if not value:
+        return False
+    if is_author_prefix(value) and (re.search(r'\b[A-Z]\.\s*|[,;]|\bet al\b', value)):
         return False
     words = re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ]{2,}", value)
     return len(words) >= 3 and not re.search(
@@ -93,8 +128,11 @@ def _safe_http_url(value: str | None) -> str | None:
 
 
 def _first_author_family(citation: str) -> str:
+    citation = normalize_text(citation)
     first = re.sub(r"^\s*\[\d+\]\s*", "", citation).split(",", 1)[0].strip()
     tokens = re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ][\w’'-]*", first)
+    if len(tokens) > 1 and all(len(t) == 1 for t in tokens[1:]):
+        return tokens[0].casefold()  # Surname-first Vancouver/APA.
     return tokens[-1].casefold() if tokens else ""
 
 
@@ -115,20 +153,89 @@ def _crossref_author_matches(item: dict, citation: str) -> bool:
     family = _first_author_family(citation)
     authors = item.get("author") or []
     return bool(family and any(
-        str(author.get("family") or "").casefold() == family for author in authors
+        isinstance(author, dict) and _first_author_family(str(author.get("family") or '')) == family for author in authors
     ))
+
+
+def _coordinates_match(reference: Reference, metadata: dict) -> bool:
+    """Require bibliographic coordinates for references which omit the title."""
+    citation = normalize_text(reference.original_text)
+    volume = str(metadata.get('volume') or '').strip()
+    page = str(metadata.get('page') or metadata.get('article-number') or '').strip()
+    if not volume or volume == reference.year:
+        return False
+    # Compare the first page/article identifier, including alphanumeric pages.
+    first_page = re.split(r'\s*[-–—]\s*', page)[0]
+    if not first_page:
+        return False
+    # First page must follow this volume/date/issue; the last page is not a match.
+    pattern = (r'(?<![\w\[(])' + re.escape(volume) + r'(?![\w\])])\s*'
+               r'(?:\([\w\s,–-]+\)\s*){0,2}'
+               r'(?:(?:18|19|20)\d{2}\s*)?[,;:]?\s*(?:pp?\.?\s*)?'
+               + re.escape(first_page) + r'(?!\w)')
+    return bool(re.search(pattern, citation, re.I))
+
+
+def _candidate_title(value) -> bool:
+    return bool(isinstance(value, str) and re.search(r'[^\W\d_]{3}', value)
+                and not VENUE.match(value)
+                and not (is_author_prefix(value) and re.search(r'\b[A-Z]\.\s*|[,;]|\bet al\b', value)))
+
+
+def _journal_matches(citation: str, journal) -> bool:
+    if not isinstance(journal, str) or not journal.strip():
+        return True  # Some APIs omit the venue; other identity fields remain required.
+    generic = {'journal', 'of', 'the', 'and', 'j', 'proceedings', 'proc'}
+    words = [w.casefold() for w in re.findall(r'[^\W\d_]+', journal) if len(w) >= 3 and w.casefold() not in generic]
+    printed = [w.casefold() for w in re.findall(r'[^\W\d_]+', normalize_text(citation))]
+    return bool(words and all(any(w.startswith(p) or p.startswith(w) for p in printed if len(p) >= 3) for w in words))
+
+
+def _clean_reference(reference: Reference) -> Reference:
+    """A citation or author list is not a usable paper title."""
+    printed_title, printed_year, authors = citation_fields(reference.original_text)
+    title = reference.title or ''
+    normalized = _normalize(title)
+    names = _normalize(' '.join(authors))
+    if normalized and ((normalized == _normalize(reference.original_text) and (authors or printed_year)) or normalized == names
+                       or VENUE.match(title)
+                       or (is_author_prefix(title) and re.search(r'\b[A-Z]\.\s*|[,;]|\bet al\b', title))):
+        title = printed_title
+    if not title:
+        title = printed_title
+    return replace(reference, title=title, year=reference.year or printed_year, authors=reference.authors or authors)
+
+
+def _metadata_matches(reference: Reference, metadata: dict) -> bool:
+    title = str(metadata.get('title') or '')
+    year = str(metadata.get('year') or '')
+    if not _candidate_title(title) or reference.year and year and reference.year != year:
+        return False
+    if _usable_title(reference.title):
+        return _title_matches(reference.title, title)
+    if len(_normalize(title)) >= 15 and _normalize(title) in _normalize(reference.original_text):
+        return True
+    family = _first_author_family(reference.original_text)
+    def author_family(name):
+        name = str(name).split(',', 1)[0]
+        return _first_author_family(name)
+    return bool(reference.year and reference.year == year and family
+                and any(author_family(a) == family for a in metadata.get('authors') or [])
+                and _coordinates_match(reference, metadata) and _journal_matches(reference.original_text, metadata.get('journal')))
 
 
 def _good_crossref_match(item: dict, reference: Reference) -> bool:
     titles = item.get("title") or []
     matched_title = titles[0] if titles else ""
+    if not _candidate_title(matched_title):
+        return False
     if _usable_title(reference.title) and _title_similarity(reference.title, matched_title) >= 0.88:
         return not reference.year or _crossref_year(item) in (None, reference.year)
 
     full_citation = _normalize(reference.original_text)
     normalized_title = _normalize(matched_title)
     if len(normalized_title) >= 15 and normalized_title in full_citation:
-        return True
+        return not reference.year or _crossref_year(item) in (None, reference.year)
     if _usable_title(reference.title):
         return False
 
@@ -136,10 +243,12 @@ def _good_crossref_match(item: dict, reference: Reference) -> bool:
         score = float(item.get("score", 0))
     except (TypeError, ValueError):
         score = 0.0
-    same_year = not reference.year or _crossref_year(item) == reference.year
+    same_year = bool(reference.year and _crossref_year(item) == reference.year)
     # Some bibliography formats omit article titles entirely. Crossref's
     # bibliographic score plus the year and first author can still identify it.
-    return score >= 35 and same_year and _crossref_author_matches(item, reference.original_text)
+    return bool(matched_title and score >= 35 and same_year
+                and _crossref_author_matches(item, reference.original_text) and _coordinates_match(reference, item)
+                and _journal_matches(reference.original_text, (item.get('container-title') or [''])[0]))
 
 
 async def _crossref_by_doi(client: httpx.AsyncClient, doi: str) -> dict | None:
@@ -167,6 +276,10 @@ async def _crossref_lookup(client: httpx.AsyncClient, reference: Reference) -> d
     matches = [item for item in items if _good_crossref_match(item, reference)]
     if not matches:
         return None
+    if not _usable_title(reference.title):
+        identities = {normalize_doi(str(item.get('DOI') or '')) or _normalize(str((item.get('title') or [''])[0])) for item in matches}
+        if len(identities) > 1:
+            return None  # Two distinct records satisfy the citation: leave unresolved.
     return max(matches, key=lambda item: float(item.get("score") or 0))
 
 
@@ -178,12 +291,15 @@ async def _openalex_lookup(client: httpx.AsyncClient, reference: Reference) -> d
     )
     response.raise_for_status()
     results = response.json().get("results", [])
-    matches = [
-        work for work in results
-        if _usable_title(reference.title)
-        and _title_matches(reference.title, work.get("display_name") or "")
-    ]
+    matches = [work for work in results if isinstance(work, dict) and _metadata_matches(reference, {
+        'title': work.get('display_name'), 'year': work.get('publication_year'),
+        'authors': [(a.get('author') or {}).get('display_name', '') for a in work.get('authorships') or [] if isinstance(a, dict) and isinstance(a.get('author'), dict)],
+        'volume': (work.get('biblio') or {}).get('volume'), 'page': (work.get('biblio') or {}).get('first_page'),
+        'journal': ((work.get('primary_location') or {}).get('source') or {}).get('display_name'),
+    })]
     if not matches:
+        return None
+    if not _usable_title(reference.title) and len({w.get('id') or _normalize(w.get('display_name') or '') for w in matches}) > 1:
         return None
     work = max(
         matches,
@@ -264,20 +380,25 @@ async def _semantic_scholar_by_doi(client: httpx.AsyncClient, doi: str) -> dict 
 async def _semantic_scholar_lookup(
     client: httpx.AsyncClient, reference: Reference
 ) -> dict | None:
-    if not _usable_title(reference.title):
-        return None
     response = await _academic_get(client,
         f"{SEMANTIC_SCHOLAR_URL}/search",
         params={
-            "query": reference.title,
+            "query": reference.title if _usable_title(reference.title) else reference.original_text,
             "limit": 5,
-            "fields": "title,openAccessPdf,externalIds,url,paperId,year,authors,abstract",
+            "fields": "title,openAccessPdf,externalIds,url,paperId,year,authors,abstract,journal",
         },
     )
     response.raise_for_status()
     papers = response.json().get("data", [])
-    matches = [paper for paper in papers if _title_matches(reference.title, paper.get("title") or "")]
+    matches = [paper for paper in papers if isinstance(paper, dict) and _metadata_matches(reference, {
+        'title': paper.get('title'), 'year': paper.get('year'),
+        'authors': [a.get('name', '') for a in paper.get('authors') or [] if isinstance(a, dict)],
+        'volume': (paper.get('journal') or {}).get('volume'), 'page': (paper.get('journal') or {}).get('pages'),
+        'journal': (paper.get('journal') or {}).get('name'),
+    })]
     if not matches:
+        return None
+    if not _usable_title(reference.title) and len({p.get('paperId') or _normalize(p.get('title') or '') for p in matches}) > 1:
         return None
     paper = max(
         matches,
@@ -301,6 +422,40 @@ async def _semantic_scholar_lookup(
     }
 
 
+async def _google_scholar_lookup(client: httpx.AsyncClient, reference: Reference) -> dict | None:
+    """Optional official SerpAPI integration; never scrape Scholar HTML/CAPTCHAs."""
+    key = os.getenv('SERPAPI_API_KEY', '').strip()
+    if not key:
+        return None
+    response = await _academic_get(client, 'https://serpapi.com/search.json', params={
+        'engine': 'google_scholar', 'q': reference.original_text or reference.title,
+        'num': 5, 'api_key': key,
+    })
+    response.raise_for_status()
+    body = response.json()
+    if body.get('error'):
+        raise ValueError('Scholar search unavailable')
+    matches = []
+    for row in body.get('organic_results') or []:
+        if not isinstance(row, dict):
+            continue
+        title = str(row.get('title') or '')
+        link = _safe_http_url(row.get('link'))
+        # Scholar snippets alone often lack volume/pages. Verify linked DOI records.
+        doi_match = re.search(r'10\.\d{4,9}/[^\s?#]+', unquote(link or ''), re.I)
+        if doi_match:
+            candidate = await _crossref_by_doi(client, normalize_doi(doi_match.group()))
+            if candidate and _good_crossref_match({**candidate, 'score': 100}, reference):
+                matches.append({'title': (candidate.get('title') or [title])[0], 'doi': candidate.get('DOI'),
+                                'year': _crossref_year(candidate), 'paper_url': link, 'record_url': link})
+        elif _usable_title(reference.title) and _title_matches(reference.title, title):
+            summary = str((row.get('publication_info') or {}).get('summary') or '')
+            if not reference.year or re.search(r'(?<!\d)' + re.escape(reference.year) + r'(?!\d)', summary):
+                matches.append({'title': title, 'paper_url': link, 'record_url': link})
+    identities = {normalize_doi(str(m.get('doi') or '')) or _normalize(m['title']) for m in matches}
+    return matches[0] if matches and len(identities) == 1 else None
+
+
 def _new_result(reference: Reference) -> dict:
     return {
         "original_text": reference.original_text,
@@ -309,6 +464,8 @@ def _new_result(reference: Reference) -> dict:
         "authors_source": "pdf" if reference.authors else None,
         "year": reference.year,
         "matched_title": None,
+        "title_source": "PDF" if reference.title else None,
+        "title_status": "from_pdf" if reference.title else "unresolved",
         "doi": reference.doi,
         "paper_url": f"https://doi.org/{reference.doi}" if reference.doi else None,
         "oa_pdf_url": None,
@@ -330,8 +487,10 @@ def _add_source(result: dict, source_name: str, metadata: dict) -> None:
     paper_url = _safe_http_url(metadata.get("paper_url"))
     record_url = _safe_http_url(metadata.get("record_url")) or paper_url
     pdf_url = _safe_http_url(metadata.get("oa_pdf_url"))
-    if title and not result["matched_title"]:
+    if _candidate_title(title) and not result["matched_title"]:
         result["matched_title"] = title
+        result['title_source'] = source_name
+        result['title_status'] = 'verified'
     if doi and not result["doi"]:
         result["doi"] = normalize_doi(str(doi))
     if paper_url and not result["paper_url"]:
@@ -375,6 +534,7 @@ def _record_lookup_error(result, source, exc):
 async def _resolve_one(
     client: httpx.AsyncClient, semaphore: asyncio.Semaphore, reference: Reference, discovery=None, all_sources=False
 ) -> dict:
+    reference = _clean_reference(reference)
     result = _new_result(reference)
     async with semaphore:
         try:
@@ -416,7 +576,7 @@ async def _resolve_one(
         effective_title = result["matched_title"] or reference.title
         # DOI references have already been checked against exact DOI records in
         # OpenAlex and Semantic Scholar; avoid repeating title-search requests.
-        if not effective_doi and _usable_title(effective_title):
+        if not effective_doi:
             lookup_reference = replace(reference, title=effective_title)
             try:
                 openalex = await _openalex_lookup(client, lookup_reference)
@@ -433,11 +593,19 @@ async def _resolve_one(
                 except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError) as exc:
                     _record_lookup_error(result, 'Semantic Scholar', exc)
 
+        if not result['matched_title'] and os.getenv('SERPAPI_API_KEY', '').strip():
+            try:
+                scholar = await _google_scholar_lookup(client, reference)
+                if scholar:
+                    _add_source(result, 'Google Scholar (SerpAPI)', scholar)
+            except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError) as exc:
+                _record_lookup_error(result, 'Google Scholar (SerpAPI)', exc)
+
         if discovery:
             await discovery.enrich(result)
 
     search_text = result["matched_title"] or reference.title
-    if not _usable_title(search_text):
+    if not result['matched_title'] and not _usable_title(search_text):
         search_text = reference.original_text
     result["scholar_url"] = "https://scholar.google.com/scholar?q=" + quote_plus(search_text)
     _set_access_category(result)
@@ -869,11 +1037,16 @@ async def lookup_doi_relationships(value: str) -> dict:
 
 
 async def enrich_ai_references(items: list[dict]) -> list[dict]:
-    """Fetch abstracts with bounded concurrency; missing metadata stays explicit."""
+    """Recover missing titles before AI; author-only citations stay unknown."""
     semaphore = asyncio.Semaphore(6)
-    async def enrich(item):
+    async def enrich(item, client):
         result = dict(item)
         result['abstract'] = ''
+        ref = _clean_reference(Reference(str(item.get('original_text') or ''), str(item.get('title') or ''),
+                                        item.get('year'), item.get('id'), item.get('doi')))
+        result['title'] = ref.title
+        result['title_status'] = 'from_pdf' if ref.title else 'unresolved'
+        result['title_source'] = 'PDF' if ref.title and _normalize(ref.title) in _normalize(ref.original_text) else None
         if item.get('doi'):
             try:
                 async with semaphore:
@@ -881,8 +1054,19 @@ async def enrich_ai_references(items: list[dict]) -> list[dict]:
                 result['abstract'] = (material.get('abstract') or '')[:2500]
                 result['title'] = material.get('title') or result.get('title')
                 result['authors'] = material.get('authors') or []
+                if material.get('title'):
+                    result['title_status'] = 'verified'
+                    result['title_source'] = 'DOI metadata'
+                    result['matched_title'] = material['title']
             except (ValueError, httpx.HTTPError):
                 pass
-        result['evidence_level'] = 'abstract' if result['abstract'] else 'title/metadata only'
+        elif not _usable_title(ref.title):
+            metadata = await _resolve_one(client, semaphore, ref)
+            for field in ('title', 'matched_title', 'title_status', 'title_source', 'doi', 'year', 'authors', 'abstract', 'paper_url', 'scholar_url', 'metadata_sources', 'source_links', 'oa_search'):
+                if metadata.get(field) or field in ('title', 'title_status', 'title_source'):
+                    result[field] = metadata.get(field)
+            result['title'] = metadata.get('matched_title') or ref.title
+        result['evidence_level'] = 'abstract' if result['abstract'] else ('title/metadata only' if result['title'] else 'bibliographic citation only — title unknown')
         return result
-    return await asyncio.gather(*(enrich(item) for item in items))
+    async with httpx.AsyncClient(timeout=httpx.Timeout(8, connect=4), headers=_headers(), follow_redirects=False) as client:
+        return await asyncio.gather(*(enrich(item, client) for item in items))

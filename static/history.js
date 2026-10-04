@@ -16,6 +16,10 @@
     if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('ข้อมูลรายการอ้างอิงไม่ถูกต้อง');
     const out={};
     for(const key of ['title','matched_title','doi','year','original_text','access_label','access_detail','abstract','journal'])out[key]=text(value[key],key==='original_text'?4000:key==='abstract'?8000:key==='year'?10:key==='doi'?300:1200);
+    out.title_source=text(value.title_source,80);
+    out.title_status=['verified','from_pdf','unresolved'].includes(value.title_status)?value.title_status:'';
+    out.metadata_search={};
+    if(value.metadata_search&&typeof value.metadata_search==='object')for(const [source,result] of Object.entries(value.metadata_search).slice(0,10))if(/^[\w .()/-]{1,80}$/.test(source)&&typeof result==='string')out.metadata_search[source]=text(result,150);
     for(const key of ['paper_url','oa_pdf_url','scholar_url'])out[key]=url(value[key]);
     out.authors=Array.isArray(value.authors)?value.authors.filter(v=>typeof v==='string').slice(0,40).map(v=>text(v,300)):[];
     out.reference_number=Number.isSafeInteger(value.reference_number)&&value.reference_number>0?value.reference_number:1;
@@ -23,7 +27,7 @@
     out.extraction_fallback=value.extraction_fallback===true;
     out.access_status=['pdf_available','open_source_record','scholar_search'].includes(value.access_status)?value.access_status:'scholar_search';
     out.metadata_sources=Array.isArray(value.metadata_sources)?value.metadata_sources.slice(0,20).map(v=>text(v,80)):[];
-    out.source_links=Array.isArray(value.source_links)?value.source_links.slice(0,20).map(v=>({url:url(v?.url),source:text(v?.source,80),label:text(v?.label,100)})).filter(v=>v.url):[];
+    out.source_links=Array.isArray(value.source_links)?value.source_links.slice(0,20).map(v=>({url:url(v?.url),name:text(v?.name,80),source:text(v?.source,80),label:text(v?.label,100)})).filter(v=>v.url):[];
     out.pdf_locations=Array.isArray(value.pdf_locations)?value.pdf_locations.slice(0,20).map(v=>({url:url(v?.url),landing_url:url(v?.landing_url),source:text(v?.source,80),version:text(v?.version,80)})).filter(v=>v.url):[];
     out.citation_contexts=[]; // Body excerpts, AI answers and chat are not saved.
     return out;

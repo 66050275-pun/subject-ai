@@ -145,6 +145,9 @@ def parse_assignments(value, paper_ids, themes):
 
 
 async def cluster_in_batches(papers, provider, model, key, base_url, generate, progress=None):
+    unknown = {p['id'] for p in papers if not str(p.get('title') or '').strip() and not str(p.get('abstract') or '').strip()}
+    if len(unknown) == len(papers):
+        raise HTTPException(422, 'ยังไม่พบชื่อเรื่องหรือ abstract สำหรับวางแผนธีม กดเติมชื่อเรื่องจริงก่อน · ไม่มีการเรียก AI')
     batches = evidence_batches(papers)
     total = len(batches) + 1
     async def report(stage, completed):
@@ -179,7 +182,8 @@ async def cluster_in_batches(papers, provider, model, key, base_url, generate, p
                   '\nPapers:\n' + json.dumps(batch, ensure_ascii=False))
         try:
             value = await generate(provider, model, key, prompt, structured=True, max_output_tokens=6000, base_url=base_url)
-            assignments.update(parse_assignments(value, {p['id'] for p in batch}, themes))
+            parsed = parse_assignments(value, {p['id'] for p in batch}, themes)
+            assignments.update({i: None if i in unknown else theme for i, theme in parsed.items()})
         except AIResponseFormatError:
             failed_batches.append(index)
         except HTTPException as exc:

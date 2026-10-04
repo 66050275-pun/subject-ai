@@ -14,6 +14,7 @@ from web_security import SecurityHeaders, MemoryOnlyUploads
 from extractor import extract_source_metadata, ExtractionError, extract_citation_counts, extract_citation_contexts, extract_references_with_diagnostics
 from ai_features import router as ai_router
 from oa_features import router as oa_router
+from metadata_features import router as metadata_router
 from resolver import (
     lookup_doi,
     lookup_doi_relationships,
@@ -37,6 +38,7 @@ app.add_middleware(SecurityHeaders)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(ai_router)
 app.include_router(oa_router)
+app.include_router(metadata_router)
 
 
 @app.get("/health")

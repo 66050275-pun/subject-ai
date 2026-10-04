@@ -40,3 +40,5 @@ More detected entries alone do not prove better extraction: wrapped authors, edi
 No live LLM comparison was made. This improves practical overlap with AI extraction; it does not claim equal accuracy for arbitrary PDF layouts or semantic interpretation. Scanned PDFs still require OCR, and severely damaged text layers or unsupported styles may still need the optional AI tool or manual review.
 
 No PDFs, private document contents or credentials are committed. Public fixture provenance/hashes and the current offline results are in [PDF_CORPUS_REPORT.json](PDF_CORPUS_REPORT.json). To repeat the offline checks, use `tools/evaluate_pdfs.py` as described in [PDF_EXTRACTION_TESTS.md](PDF_EXTRACTION_TESTS.md).
+
+Follow-up: in the lithium-battery recycling PDF, the four populated title fields were journal fragments, since the bibliography omits titles. See [TITLE_METADATA_RECOVERY.md](TITLE_METADATA_RECOVERY.md) for the correction and automatic metadata lookup. Title field coverage alone is not accuracy.
