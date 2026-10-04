@@ -27,6 +27,7 @@ async def fake_app(scope,receive,send):
  elif path=='/api/ai/clusters':payload={'clusters':[{'name':'Topic '+str(i),'ids':[i]} for i in (1,2,3)]}
  elif path=='/api/ai/compare':payload={'comparison':'Mock cross-paper comparison'}
  elif path=='/api/ai/qa':payload={'answer':'Mock shared answer'}
+ elif path=='/api/ai/alibaba-models':payload={'models':['qwen-plus'],'verified':False,'source':'suggested','warning':'รายชื่อแนะนำ ไม่ใช่ผลตรวจคีย์'}
  elif path.endswith('-models'):payload={'models':['test-model'],'base_url':'https://api.maxplus-ai.cc/v1'}
  else:payload={'detail':'unknown route'}
  await send({'type':'http.response.start','status':200,'headers':[(b'content-type',b'application/json')]})

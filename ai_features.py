@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field, ValidationError, ConfigDict, field_valida
 
 from ai_clusters import normalize_clusters
 from ai_cluster_batches import cluster_in_batches, BATCH_SIZE
-from ai_engine import generate, DEFAULT_MODELS, normalize_credentials, gemini_models, maxplus_models, normalize_maxplus_url, AIResponseFormatError
+from ai_engine import (generate, DEFAULT_MODELS, normalize_credentials, gemini_models, maxplus_models,
+                       alibaba_models, normalize_provider_base_url, AIResponseFormatError)
 from extractor import (extract_source_metadata, ExtractionError, Reference, extract_summary_text,
                        extract_bibliography_text, extract_citation_contexts, extract_citation_counts, split_bibliography_batches, numbered_bibliography_entries, _title_and_year, _DOI_RE)
 from resolver import fetch_doi_summary_material, enrich_ai_references, resolve_references, validate_doi
@@ -120,6 +121,11 @@ async def list_maxplus_models(base_url: str | None = None, key: str | None = Hea
     return await maxplus_models(key, base_url)
 
 
+@router.get('/api/ai/alibaba-models')
+async def list_alibaba_models(base_url: str | None = None):
+    return await alibaba_models(base_url)
+
+
 @router.post('/api/summarize')
 async def summarize(file: UploadFile | None = File(None), doi: str | None = Form(None),
                     provider: str = Form('openai'), model: str = Form(''), base_url: str | None = Form(None),
@@ -128,8 +134,7 @@ async def summarize(file: UploadFile | None = File(None), doi: str | None = Form
     if not (key or old_key):
         raise HTTPException(400, 'กรุณากรอก API key')
     model, actual_key = normalize_credentials(provider, model, key or old_key)
-    if provider == 'maxplus':
-        base_url = normalize_maxplus_url(base_url)
+    base_url = normalize_provider_base_url(provider, base_url)
     text, source, _ = await source_material(file, doi)
     summary = await generate(provider, model, actual_key,
         'สรุปเป้าหมาย วิธีการ ผลลัพธ์ ข้อจำกัด และสรุปสั้น ๆ หากมีเพียง metadata ให้บอกว่าไม่พอสรุปผลวิจัย\n' + text, base_url=base_url)
@@ -142,8 +147,7 @@ async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'ex
     if not key or provider not in DEFAULT_MODELS:
         raise HTTPException(400, 'กรุณาเลือก provider และกรอก API key')
     model, key = normalize_credentials(provider, model, key)
-    if provider == 'maxplus':
-        base_url = normalize_maxplus_url(base_url)
+    base_url = normalize_provider_base_url(provider, base_url)
     if len(payload) > 550000:
         raise HTTPException(413, 'ข้อมูลรายการใหญ่เกินขีดจำกัด')
     try:
@@ -462,6 +466,7 @@ async def compare_workspace(provider: str = Form('openai'), model: str = Form(''
                             base_url: str | None = Form(None),
                             key: str | None = Header(None, alias='X-AI-API-Key')):
     model, key = normalize_credentials(provider, model, key)
+    base_url = normalize_provider_base_url(provider, base_url)
     try:
         data = WorkspaceComparison.model_validate_json(payload)
         for paper in data.papers:

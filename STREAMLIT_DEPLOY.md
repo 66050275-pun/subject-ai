@@ -34,6 +34,8 @@ CORE_API_KEY = "your-core-key"
 
 **ไม่ต้องตั้ง AI key ของเจ้าของแอปใน Secrets** ผู้ใช้เลือก provider/model และกรอกคีย์ของตนใน sidebar การใช้ AI จึงคิดตามบัญชีผู้ใช้ แอปไม่ได้หยิบ shared AI key มาใช้
 
+รองรับ **Alibaba Cloud Model Studio (Qwen)** ในตั้งค่า AI ด้วย เลือกภูมิภาคตรงกับ Model Studio Standard API key แล้วกรอกโมเดล (ค่าเริ่มต้น `qwen-plus`) ไม่ต้องเพิ่ม SDK หรือ Secrets ของ Alibaba รายชื่อโมเดลแนะนำไม่ได้ตรวจคีย์หรือสิทธิ์สร้างคำตอบ อ่าน [ALIBABA_MODEL_STUDIO.md](ALIBABA_MODEL_STUDIO.md) สำหรับรายละเอียด
+
 ## ทดสอบบนเครื่อง
 
 ```bash

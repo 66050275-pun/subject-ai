@@ -4,7 +4,7 @@ PaperRef Finder accepts a research PDF or DOI. For PDFs it extracts numbered or 
 
 DOI lookup displays the paper and its bibliography, plus papers that cite it when indexed. Relationship lists are combined from Crossref, OpenAlex, and Semantic Scholar; up to 100 references and 20 citing papers are shown. Each result is grouped by access status: direct PDF available, record found in an open metadata source, or Google Scholar follow-up needed. A metadata record does not guarantee that its full text is free to download.
 
-The AI tools support OpenAI, Google Gemini, Anthropic Claude and MaxPlus AI (OpenAI-compatible) with a user-supplied API key. Features include summaries, citation intent, 3–5 reference synthesis, graph themes, paper Q&A and optional bibliography extraction. See [AI_ARCHITECTURE.md](AI_ARCHITECTURE.md) for endpoints, implementation order, evidence limits and privacy behavior.
+The AI tools support OpenAI, Google Gemini, Anthropic Claude, MaxPlus AI and Alibaba Cloud Model Studio with a user-supplied API key. Features include summaries, citation intent, 3–5 reference synthesis, graph themes, paper Q&A and optional bibliography extraction. See [AI_ARCHITECTURE.md](AI_ARCHITECTURE.md) for endpoints, implementation order, evidence limits and privacy behavior.
 
 ## Run locally
 
@@ -61,6 +61,8 @@ Crossref's polite-pool contact is optional. Set `PAPERREF_CONTACT_EMAIL` before 
 - `requirements.txt` — Python dependencies
 
 For MaxPlus, choose **MaxPlus AI**, enter its own API key and use the default base URL `https://api.maxplus-ai.cc/v1` or the documented path on the same host. Load/select a model before invoking an AI tool. Live MaxPlus compatibility remains unverified; see AI_ARCHITECTURE.md.
+
+For Alibaba, open **⚙ Settings → AI**, choose **Alibaba Cloud Model Studio (Qwen)**, select the region that issued your Model Studio Standard API key, then enter the key and model (default `qwen-plus`). Singapore, Beijing, Virginia and Hong Kong endpoints are supported. Suggested models are not a key/quota check; model access and charges depend on your Alibaba account. See [ALIBABA_MODEL_STUDIO.md](ALIBABA_MODEL_STUDIO.md).
 
 The frontend now separates **Code extraction**, **AI extraction** and **DOI database** results into individual datasets. Switch between them to inspect their own counts, selections, graph and exports. See `static/app.css` for the redesigned responsive workspace.
 

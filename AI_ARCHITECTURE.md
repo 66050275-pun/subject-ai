@@ -4,7 +4,7 @@ Request flow: browser → FastAPI → local PDF extraction / public academic met
 
 ## Modules and implementation order
 
-1. `ai_engine.py`: stateless adapters for OpenAI Chat Completions, Gemini generateContent and Claude Messages; provider defaults, bounded prompts, JSON decoding and generic errors. No SDK or credential database.
+1. `ai_engine.py`: stateless adapters for OpenAI Chat Completions, Gemini generateContent, Claude Messages, and OpenAI-compatible MaxPlus / Alibaba Cloud Model Studio; provider defaults, bounded prompts, JSON decoding and generic errors. No SDK or credential database.
 2. `extractor.py`: `extract_citation_contexts` finds numbered markers, ranges, author/year heuristics and internal bibliography link positions. Returns up to three snippets per reference with page and method. `extract_bibliography_text` isolates bibliography or proposes trailing pages if no heading exists. Regex extraction remains the default.
 3. `resolver.py`: `enrich_ai_references` fetches DOI abstracts with six concurrent requests; retains records when abstracts are unavailable. Crossref/OpenAlex supply abstract evidence. Existing metadata lookup also uses Semantic Scholar.
 4. `ai_features.py`: multipart endpoint orchestration, Pydantic input/output schemas, evidence assembly, source extraction, validated IDs, and AI reference fallback followed by normal resolution. `main.py` mounts this router and adds contexts to `/api/references`.
@@ -15,6 +15,7 @@ Request flow: browser → FastAPI → local PDF extraction / public academic met
 | Endpoint | Purpose | Inputs / output |
 |---|---|---|
 | GET `/api/ai/providers` | Default provider models | `providers` map |
+| GET `/api/ai/alibaba-models` | Suggested Model Studio model names | optional regional `base_url` → `models`, `verified:false`; no key check or upstream call |
 | POST `/api/summarize` | Summary | PDF or DOI → `summary` |
 | POST `/api/ai/intents` | Citation intent | paper IDs + PDF contexts → `intents`, `contexts` |
 | POST `/api/ai/synthesis` | Compare 3–5 references with source | 3–5 selected papers → `synthesis` |
@@ -22,7 +23,7 @@ Request flow: browser → FastAPI → local PDF extraction / public academic met
 | POST `/api/ai/qa` | Grounded conversation | question + up to 10 history messages + selected papers → `answer` |
 | POST `/api/ai/extract-references` | Explicit paid bibliography fallback | PDF → resolved `results` with original numbering |
 
-All POST AI requests use multipart fields `provider` (`openai`, `gemini`, `claude`), editable `model`, exactly one `file` or `doi`, and header `X-AI-API-Key`. Summary also accepts the old `X-OpenAI-API-Key` for compatibility. Other features use a `payload` JSON form field:
+All source-paper POST AI requests use multipart fields `provider` (`openai`, `gemini`, `claude`, `maxplus`, `alibaba`), editable `model`, exactly one `file` or `doi`, and header `X-AI-API-Key`. MaxPlus and Alibaba also accept `base_url`, restricted to their supported official hosts. Summary also accepts the old `X-OpenAI-API-Key` for compatibility. Other features use a `payload` JSON form field:
 
 ```json
 {
@@ -77,6 +78,17 @@ Select `maxplus` in the provider picker, enter a MaxPlus key, set the base URL (
 - Generation requests `POST {base_url}/chat/completions` using Bearer authentication, `messages`, `model`, and legacy-compatible `max_tokens`. It reads `choices[0].message.content`. Structured tools request JSON through the prompt and retain server-side schema validation; the adapter does not require the relay to implement `response_format`.
 - Source excerpts go to MaxPlus when this provider is selected. Keys remain transient and billing belongs to the MaxPlus account. This adapter assumes OpenAI compatibility; documentation and live behavior could not be verified because the execution environment blocks this domain.
 - Mocked checks passed for URL boundaries, authentication and request construction, model listing, JSON decoding and endpoint validation. No actual provider keys or paid calls were used.
+
+## Alibaba Cloud Model Studio
+
+Alibaba Cloud Model Studio uses provider `alibaba` and defaults to `qwen-plus`.
+All six AI tools and saved-workspace comparisons use the same adapter and selected
+regional endpoint. The settings dropdown supports Singapore, Beijing, Virginia
+and Hong Kong. Changing provider or Alibaba region clears the key; optional
+remembered settings contain only provider/model, so the region starts at Singapore
+after reload. Suggested model names do not validate credentials or generation
+access. See [ALIBABA_MODEL_STUDIO.md](ALIBABA_MODEL_STUDIO.md) for API details,
+official sources and validation limits.
 
 ## Frontend workspace and extraction provenance
 

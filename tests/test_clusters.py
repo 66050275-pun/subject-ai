@@ -57,7 +57,7 @@ class ClusterTests(unittest.IsolatedAsyncioTestCase):
     async def test_all_provider_adapters_accept_fenced_cluster_array(self):
         original=httpx.AsyncClient
         text='คำตอบ:\n```json\n'+json.dumps([{'theme': g['name'], 'reference_ids': [str(i) for i in g['ids']]} for g in GROUPS])+'\n```'
-        for provider in ('openai','gemini','claude','maxplus'):
+        for provider in ('openai','gemini','claude','maxplus','alibaba'):
             calls=[]
             def respond(request):
                 calls.append(request)

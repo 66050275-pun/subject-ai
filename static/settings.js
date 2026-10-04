@@ -51,8 +51,9 @@
   document.getElementById('toggle-key').onclick=()=>{const show=key.type==='password';key.type=show?'text':'password';document.getElementById('toggle-key').textContent=show?'ซ่อนคีย์':'แสดงคีย์';document.getElementById('toggle-key').setAttribute('aria-pressed',String(show));};
   dialog.addEventListener('close',hideKey);
   document.getElementById('ai-provider').addEventListener('change',hideKey);
+  document.getElementById('alibaba-region').addEventListener('change',hideKey);
   document.addEventListener('visibilitychange',()=>{if(document.hidden)hideKey();});
-  for(const button of document.querySelectorAll('[data-clear-key]'))button.onclick=()=>{key.value='';hideKey();document.getElementById('key-clear-status').textContent='ล้างคีย์ในหน้านี้แล้ว คำขอที่เริ่มส่งไปแล้วอาจยังประมวลผลอยู่';};
+  for(const button of document.querySelectorAll('[data-clear-key]'))button.onclick=()=>{key.value='';key.dispatchEvent(new Event('input'));hideKey();document.getElementById('key-clear-status').textContent='ล้างคีย์ในหน้านี้แล้ว คำขอที่เริ่มส่งไปแล้วอาจยังประมวลผลอยู่';};
   document.getElementById('clear-key').addEventListener('click',hideKey);
   const save=()=>{
     if(!remember.checked)return;
@@ -60,10 +61,10 @@
     catch(_){remember.checked=false;status.textContent='เบราว์เซอร์ไม่อนุญาตให้จำการตั้งค่า';}
   };
   remember.onchange=()=>{if(remember.checked)save();else{try{localStorage.removeItem(storageKey);status.textContent='ลบการตั้งค่าที่จำไว้แล้ว';}catch(_){status.textContent='ลบไม่ได้ โปรดล้างข้อมูลเว็บไซต์ในเบราว์เซอร์';}}};
-  for(const id of ['ai-provider','summary-model','gemini-model-picker','maxplus-model-picker'])document.getElementById(id).addEventListener('change',()=>setTimeout(save,0));
+  for(const id of ['ai-provider','summary-model','gemini-model-picker','maxplus-model-picker','alibaba-model-picker','alibaba-region'])document.getElementById(id).addEventListener('change',()=>setTimeout(save,0));
   const restore=()=>{
     try{const prefs=JSON.parse(localStorage.getItem(storageKey)||'null');
-      if(prefs&&['openai','gemini','claude','maxplus'].includes(prefs.provider)&&typeof prefs.model==='string'&&/^[A-Za-z0-9._:/-]{0,100}$/.test(prefs.model)){
+      if(prefs&&['openai','gemini','claude','maxplus','alibaba'].includes(prefs.provider)&&typeof prefs.model==='string'&&/^[A-Za-z0-9._:/-]{0,100}$/.test(prefs.model)){
         const provider=document.getElementById('ai-provider');provider.value=prefs.provider;provider.dispatchEvent(new Event('change'));document.getElementById('summary-model').value=prefs.model;remember.checked=true;status.textContent='ใช้การตั้งค่าที่คุณเลือกให้จำไว้';
       }
     }catch(_){/* Disabled or invalid storage must not block the workspace. */}

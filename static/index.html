@@ -195,7 +195,7 @@
     <div class="drawer-heading"><div><span class="section-kicker">YOUR WORKSPACE / SETTINGS</span><h2 id="settings-title">พื้นที่ของคุณ <span>⚙</span></h2></div><button id="settings-close" type="button" aria-label="ปิดการตั้งค่า">×</button></div>
     <div class="drawer-scroll">
       <nav class="drawer-tabs" aria-label="หมวดการตั้งค่า"><button type="button" data-settings-section="ai" aria-pressed="true">✦ เชื่อมต่อ AI</button><button type="button" data-settings-section="workspace" aria-pressed="false">▤ พื้นที่ทำงาน</button><button type="button" data-settings-section="history" aria-pressed="false">◷ ประวัติ</button><button type="button" data-settings-section="privacy" aria-pressed="false">◇ ความเป็นส่วนตัว</button></nav>
-      <section id="settings-ai" class="drawer-section"><div class="drawer-intro"><h3>AI ของคุณ ทางเลือกของคุณ</h3><p>เลือกบริการและโมเดลที่ต้องการ ค่าใช้งานคิดกับบัญชีของคุณเมื่อกดใช้ฟีเจอร์ AI</p></div><details id="ai-settings" open class="settings-panel"><summary><span><span class="icon-tile violet">⚙</span> เชื่อมต่อ AI ของคุณ</span><span class="small-label">Provider · Model · API key ＋</span></summary><div class="settings-content">        <label class="mt-4 block text-sm">Provider <select id="ai-provider" class="rounded-lg border p-2"><option value="openai">OpenAI</option><option value="gemini">Google Gemini</option><option value="claude">Anthropic Claude</option><option value="maxplus">MaxPlus AI (OpenAI-compatible)</option></select></label>
+      <section id="settings-ai" class="drawer-section"><div class="drawer-intro"><h3>AI ของคุณ ทางเลือกของคุณ</h3><p>เลือกบริการและโมเดลที่ต้องการ ค่าใช้งานคิดกับบัญชีของคุณเมื่อกดใช้ฟีเจอร์ AI</p></div><details id="ai-settings" open class="settings-panel"><summary><span><span class="icon-tile violet">⚙</span> เชื่อมต่อ AI ของคุณ</span><span class="small-label">Provider · Model · API key ＋</span></summary><div class="settings-content">        <label class="mt-4 block text-sm">Provider <select id="ai-provider" class="rounded-lg border p-2"><option value="openai">OpenAI</option><option value="gemini">Google Gemini</option><option value="claude">Anthropic Claude</option><option value="maxplus">MaxPlus AI (OpenAI-compatible)</option><option value="alibaba">Alibaba Cloud Model Studio (Qwen)</option></select></label>
         <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_13rem]">
           <label class="block text-sm font-medium text-slate-700">API key
             <input id="openai-key" type="password" autocomplete="off" spellcheck="false" placeholder="API key ของค่ายที่เลือก (ไม่ต้องใส่เครื่องหมายคำพูด)" class="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
@@ -212,6 +212,22 @@
           <button id="maxplus-check" type="button" class="mt-2 rounded-lg border bg-white p-2 text-sm">ตรวจคีย์และโหลดโมเดล MaxPlus</button>
           <select id="maxplus-model-picker" aria-label="โมเดล MaxPlus" class="mt-2 block w-full rounded-lg border p-2"><option value="">เลือกโมเดล…</option></select>
           <p id="maxplus-check-result" role="status" class="mt-2 text-sm text-slate-600"></p>
+        </section>
+        <section id="alibaba-settings" class="mt-3 hidden" aria-label="Alibaba Cloud Model Studio">
+          <label class="block text-sm text-slate-700" for="alibaba-region">ภูมิภาคของ Alibaba Model Studio</label>
+          <select id="alibaba-region" aria-describedby="alibaba-region-note" class="mt-1 block w-full rounded-lg border p-2">
+            <option value="https://dashscope-intl.aliyuncs.com/compatible-mode/v1">สิงคโปร์ (Singapore / International)</option>
+            <option value="https://dashscope.aliyuncs.com/compatible-mode/v1">ปักกิ่ง (Beijing / Mainland China)</option>
+            <option value="https://dashscope-us.aliyuncs.com/compatible-mode/v1">สหรัฐฯ (Virginia / US)</option>
+            <option value="https://cn-hongkong.dashscope.aliyuncs.com/compatible-mode/v1">ฮ่องกง (Hong Kong)</option>
+          </select>
+          <p id="alibaba-region-note" class="mt-2 text-xs text-slate-600">ใช้ API key ของ Model Studio Standard และเลือกภูมิภาคเดียวกับที่ออกคีย์และเปิดใช้โมเดล คีย์ Coding Plan ใช้ endpoint คนละชุด การเปลี่ยนภูมิภาคจะล้างคีย์และรายชื่อโมเดลในหน้านี้</p>
+          <p class="mt-2 text-xs text-slate-600">ข้อความงานวิจัยจะส่งไปยัง endpoint ของ Alibaba ที่เลือก ภูมิภาคนี้ไม่ถูกบันทึกในค่าตั้งต้นและเริ่มที่สิงคโปร์เมื่อเปิดหน้าใหม่</p>
+          <p class="mt-2 text-xs text-slate-600">กรอกชื่อโมเดลจาก Model Studio หรือดูตัวเลือกแนะนำ รายชื่อแนะนำไม่ได้ตรวจ API key สิทธิ์ หรือโควตาการสร้างคำตอบ</p>
+          <button id="alibaba-check" type="button" class="mt-2 rounded-lg border bg-white p-2 text-sm">ดูโมเดลแนะนำ Alibaba</button>
+          <label class="mt-2 block text-sm text-slate-700" for="alibaba-model-picker">เลือกโมเดลจากรายชื่อ</label>
+          <select id="alibaba-model-picker" class="mt-1 block w-full rounded-lg border p-2"><option value="">เลือกโมเดล…</option></select>
+          <p id="alibaba-check-result" role="status" aria-live="polite" class="mt-2 text-sm text-slate-600"></p>
         </section>
         <datalist id="gemini-model-list"></datalist>
         <label id="gemini-model-picker-label" class="mt-3 hidden text-sm text-slate-700">เลือกจากรายการโมเดล Gemini ที่โหลดมา
@@ -537,17 +553,27 @@
       });
 
       const providerSelect = document.getElementById('ai-provider');
-      const defaultModels = {openai: 'gpt-4o-mini', gemini: 'gemini-2.5-flash', claude: 'claude-sonnet-4-5', maxplus: ''};
+      const defaultModels = {openai: 'gpt-4o-mini', gemini: 'gemini-2.5-flash', claude: 'claude-sonnet-4-5', maxplus: '', alibaba: 'qwen-plus'};
+      let alibabaModelsController = null;
+      const clearAlibabaModels = () => {
+        alibabaModelsController?.abort(); alibabaModelsController = null;
+        document.getElementById('alibaba-model-picker').replaceChildren(new Option('เลือกโมเดล…',''));
+        document.getElementById('alibaba-check-result').textContent = '';
+        document.getElementById('alibaba-check').disabled = false;
+      };
       providerSelect.addEventListener('change', () => {
         document.getElementById('summary-model').value = defaultModels[providerSelect.value];
         document.getElementById('openai-key').value = '';
         document.getElementById('gemini-check').classList.toggle('hidden', providerSelect.value !== 'gemini');
         document.getElementById('gemini-check-result').textContent = '';
         document.getElementById('gemini-model-list').replaceChildren();
+        document.getElementById('gemini-model-picker').replaceChildren(new Option('เลือกโมเดล…',''));
         document.getElementById('gemini-model-picker-label').classList.add('hidden');
         document.getElementById('maxplus-settings').classList.toggle('hidden', providerSelect.value !== 'maxplus');
         document.getElementById('maxplus-check-result').textContent = '';
         document.getElementById('maxplus-model-picker').replaceChildren(new Option('เลือกโมเดล…', ''));
+        document.getElementById('alibaba-settings').classList.toggle('hidden',providerSelect.value !== 'alibaba');
+        clearAlibabaModels();
       });
       document.getElementById('gemini-check').classList.toggle('hidden', providerSelect.value !== 'gemini');
       document.getElementById('gemini-model-picker').onchange = event => {
@@ -580,6 +606,41 @@
         finally { button.disabled = false; }
       };
       document.getElementById('maxplus-settings').classList.toggle('hidden', providerSelect.value !== 'maxplus');
+      document.getElementById('alibaba-settings').classList.toggle('hidden', providerSelect.value !== 'alibaba');
+      document.getElementById('openai-key').addEventListener('input', () => {
+        if (providerSelect.value === 'alibaba') clearAlibabaModels();
+      });
+      document.getElementById('alibaba-region').addEventListener('change', () => {
+        clearAlibabaModels(); document.getElementById('openai-key').value = '';
+        if (providerSelect.value === 'alibaba') document.getElementById('summary-model').value = defaultModels.alibaba;
+      });
+      document.getElementById('alibaba-model-picker').onchange = event => {
+        if (event.target.value) document.getElementById('summary-model').value = event.target.value;
+      };
+      document.getElementById('alibaba-check').onclick = async () => {
+        const button = document.getElementById('alibaba-check'), status = document.getElementById('alibaba-check-result');
+        const key = document.getElementById('openai-key').value.trim(), baseUrl = document.getElementById('alibaba-region').value;
+        if (providerSelect.value !== 'alibaba') return;
+        const controller = new AbortController(); alibabaModelsController?.abort(); alibabaModelsController = controller;
+        const current = () => alibabaModelsController === controller && providerSelect.value === 'alibaba' && document.getElementById('alibaba-region').value === baseUrl && document.getElementById('openai-key').value.trim() === key;
+        button.disabled = true; status.textContent = 'กำลังโหลดตัวเลือกโมเดลแนะนำ…';
+        try {
+          const query = new URLSearchParams({base_url:baseUrl});
+          const response = await fetch('/api/ai/alibaba-models?' + query, {cache:'no-store',signal:controller.signal});
+          const payload = await response.json();
+          if (!current()) return;
+          if (!response.ok) throw new Error(typeof payload.detail === 'string' ? payload.detail : 'โหลดรายชื่อโมเดล Alibaba ไม่สำเร็จ');
+          if (!Array.isArray(payload.models)) throw new Error('รูปแบบรายชื่อโมเดลไม่ถูกต้อง สามารถกรอกชื่อโมเดลจาก Model Studio ได้');
+          const names = payload.models.filter(name => typeof name === 'string' && name.length <= 100);
+          const picker = document.getElementById('alibaba-model-picker'); picker.replaceChildren(new Option('เลือกโมเดล…',''));
+          for (const name of names) picker.append(new Option(name,name));
+          picker.value = names.includes(document.getElementById('summary-model').value) ? document.getElementById('summary-model').value : '';
+          status.textContent = payload.verified === false
+            ? 'แสดงรายชื่อโมเดลแนะนำ ยังไม่ได้ยืนยันคีย์กับบริการ' + (typeof payload.warning === 'string' ? ' · ' + payload.warning : ' · ยังไม่ได้ทดสอบสิทธิ์หรือโควตาการสร้างคำตอบ')
+            : `โหลดรายชื่อได้ ${names.length} โมเดล · การแสดงรายชื่อไม่ได้ยืนยันว่าสร้างคำตอบได้ สิทธิ์ โควตา และค่าใช้จ่ายขึ้นกับบัญชีและภูมิภาค`;
+        } catch (error) { if (current() && error.name !== 'AbortError') status.textContent = error.message; }
+        finally { if (alibabaModelsController === controller) { alibabaModelsController = null; button.disabled = false; } }
+      };
       document.getElementById('maxplus-model-picker').onchange = event => {
         if (event.target.value) document.getElementById('summary-model').value = event.target.value;
       };
@@ -601,7 +662,7 @@
         } catch (error) { status.textContent = error.message; }
         finally { button.disabled = false; }
       };
-      document.getElementById('clear-key').onclick = () => { document.getElementById('openai-key').value = ''; };
+      document.getElementById('clear-key').onclick = () => { document.getElementById('openai-key').value = ''; if (providerSelect.value === 'alibaba') clearAlibabaModels(); };
       let aiBusy = false;
       async function callAI(feature, extra = {}) {
         if (oaController) throw new Error('รอการค้นหา PDF ปัจจุบันเสร็จก่อน');
@@ -622,6 +683,7 @@
         if (feature === 'extract-references' || feature === 'clusters') form.append('stream', 'true');
         form.append('provider', providerSelect.value);
         if (providerSelect.value === 'maxplus') form.append('base_url', document.getElementById('maxplus-base-url').value.trim());
+        if (providerSelect.value === 'alibaba') form.append('base_url', document.getElementById('alibaba-region').value);
         form.append('model', document.getElementById('summary-model').value.trim());
         form.append('payload', JSON.stringify({papers: feature === 'extract-references' ? [] : papers.map(p => ({id: p.reference_number, title: String(p.matched_title || p.title || p.original_text || '').slice(0, 1200), doi: p.doi || null, year: p.year ? String(p.year) : null, original_text: String(p.original_text || '').slice(0, 4000)})), ...extra}));
         aiBusy = true; updateDatasetTabs();
