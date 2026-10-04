@@ -239,7 +239,7 @@
         <button id="gemini-check" type="button" class="mt-3 hidden rounded-lg border border-indigo-200 bg-white px-4 py-2 text-sm text-indigo-700">ตรวจคีย์และโหลดโมเดล Gemini</button>
         <p id="gemini-check-result" role="status" class="mt-2 text-sm text-slate-600"></p>
 <div class="settings-footer"><p>ข้อความและ metadata จะส่งไปยังบริการที่เลือก ค่า API คิดกับบัญชีของคุณ คีย์เก็บในหน่วยความจำหน้านี้ ผ่านเซิร์ฟเวอร์เพื่อเรียกบริการ และไม่บันทึกในคุกกี้หรือ storage</p><button id="clear-key" type="button" class="text-button">ล้าง API key</button></div></div></details>
-        <div class="preference-card"><label><input id="ai-economy-mode" type="checkbox" aria-describedby="ai-economy-help"> โหมดประหยัด API (Economy Mode)</label><p id="ai-economy-help">ใช้บริบทที่เกี่ยวข้องแบบจำกัด ย่อคำตอบ และประมวลผลทีละชุดพร้อมพักคำขอ ใช้เวลานานขึ้นแต่ไม่ลดจำนวนอ้างอิง ไม่รับรองว่าจะอยู่ในโควตาฟรีหรือใช้ได้กับทุกโมเดล</p><label for="ai-economy-interval">พักระหว่างคำขออย่างน้อย</label><select id="ai-economy-interval" class="mt-1 block w-full rounded-lg border p-2" disabled><option value="30">30 วินาที</option><option value="60">60 วินาที</option><option value="120">120 วินาที</option></select><p>ใช้ผลเดิมเมื่อคำขอเหมือนเดิมในแท็บนี้ เก็บ cache ชั่วคราวในหน่วยความจำ ไม่เก็บคีย์หรือ PDF และไม่จำโหมดนี้หลังรีเฟรช</p></div>
+        <div class="preference-card"><label><input id="ai-economy-mode" type="checkbox" aria-describedby="ai-economy-help"> โหมดประหยัด API (Economy Mode)</label><p id="ai-economy-help">ใช้บริบทที่เกี่ยวข้องแบบจำกัด ย่อคำตอบ และประมวลผลทีละชุดพร้อมพักคำขอ ใช้เวลานานขึ้นแต่ไม่ลดจำนวนอ้างอิง ไม่รับรองว่าจะอยู่ในโควตาฟรีหรือใช้ได้กับทุกโมเดล</p><label for="ai-economy-interval">พักระหว่างคำขออย่างน้อย</label><select id="ai-economy-interval" class="mt-1 block w-full rounded-lg border p-2" disabled><option value="30">30 วินาที</option><option value="60">60 วินาที</option><option value="120">120 วินาที</option></select><p>ใช้ผลเดิมเมื่อคำขอเหมือนเดิมในแท็บนี้ เก็บ cache ชั่วคราวในหน่วยความจำ ไม่เก็บคีย์หรือ PDF และไม่จำโหมดนี้หลังรีเฟรช</p><label><input id="ai-retry-unavailable" type="checkbox" disabled aria-describedby="ai-retry-help"> พักแล้วลองซ้ำเมื่อ Gemini ไม่พร้อม (503)</label><p id="ai-retry-help">เฉพาะการสกัดบรรณานุกรมด้วย Gemini ในโหมดประหยัด ลองเพิ่มได้ไม่เกิน 1 คำขอต่อการสกัด พักตามช่วงที่เลือกหรือเวลาที่บริการแนะนำ สูงสุด 300 วินาที คำขอเพิ่มอาจใช้โควตาหรือมีค่า API ปิดไว้ก่อนและไม่จำหลังรีเฟรช ไม่ลองซ้ำเมื่อโควตาเต็ม (429) หรือคีย์ไม่มีสิทธิ์</p></div>
         <div class="preference-card"><label><input id="remember-ai-preferences" type="checkbox"> จำ provider และโมเดลบนอุปกรณ์นี้</label><p>เป็นตัวเลือก ใช้ local storage เก็บเฉพาะการตั้งค่า ไม่เก็บ API key, PDF หรือบทสนทนา ปิดเพื่อถอนความยินยอมและลบค่าที่จำไว้</p><p id="preferences-status" role="status"></p></div>
       </section>
       <section id="settings-workspace" class="drawer-section hidden"><div class="drawer-intro"><h3>ไปยังสิ่งที่ต้องการ</h3><p>เครื่องมือทั้งหมดในพื้นที่เดียว</p></div><div class="drawer-shortcuts"><button type="button" data-jump="paper-input">↑ PDF และ DOI <span>เลือกงานวิจัย · สกัดด้วยโค้ดหรือ AI →</span></button><button type="button" data-jump="results-section">▤ รายการอ้างอิงและกราฟ <span>ค้นหา PDF · กรองผล · ดาวน์โหลดรายการ →</span></button><button type="button" data-jump="ai-workspace">✦ AI Research Lab <span>สรุป · วิเคราะห์ citation · สังเคราะห์ · Q&A →</span></button></div><div class="privacy-card"><h4>ใช้บนอุปกรณ์ร่วมกัน</h4><p>ล้าง API key และดาวน์โหลดผลก่อนปิดแท็บ การรีเฟรชหน้าอาจทำให้ไฟล์ แช็ต และผลที่ไม่ได้บันทึกหาย เปิดผลที่บันทึกแล้วได้จากหมวดประวัติ</p><button type="button" data-clear-key class="text-button">ล้าง API key ตอนนี้</button><p id="key-clear-status" role="status"></p></div></section>
@@ -694,10 +694,12 @@
         form.append('model', document.getElementById('summary-model').value.trim());
         form.append('payload', JSON.stringify({papers: feature === 'extract-references' ? [] : papers.map(p => ({id: p.reference_number, title: String(p.matched_title || p.title || p.original_text || '').slice(0, 1200), doi: p.doi || null, year: p.year ? String(p.year) : null, original_text: String(p.original_text || '').slice(0, 4000)})), ...extra}));
         window.PaperRefAIBudget.append(form,economyProfile);
+        const retryUnavailable = feature === 'extract-references' && economyProfile.enabled && providerSelect.value === 'gemini' && document.getElementById('ai-retry-unavailable').checked;
+        if (retryUnavailable) form.append('retry_unavailable', 'true');
         const descriptor={feature,sourceVersion:requestVersion,dataset:requestDataset,
           source:file?{name:file.name,size:file.size,modified:file.lastModified}:doi,
           provider:form.get('provider'),model:form.get('model'),base_url:form.get('base_url')||'',
-          selected:[...selectedPapers].sort((a,b)=>a-b),payload:form.get('payload'),economy:economyProfile};
+          selected:[...selectedPapers].sort((a,b)=>a-b),payload:form.get('payload'),economy:economyProfile,retryUnavailable};
         aiBusy = true; updateDatasetTabs();
         const progressId = feature === 'extract-references' ? 'extraction-progress' : 'ai-progress';
         const progressLabels = {summary:'กำลังสกัดบริบทและสรุปงานวิจัย…', intents:'กำลังวิเคราะห์บริบท citation…', synthesis:'กำลังสังเคราะห์วรรณกรรม…', clusters:'กำลังจัดกลุ่มธีมบนกราฟ…', qa:'กำลังอ่านบริบทและสร้างคำตอบ…', 'extract-references':'กำลังเตรียม PDF และสกัดบรรณานุกรมด้วย AI…'};
@@ -740,10 +742,16 @@
           const event = JSON.parse(line);
           if (event.type === 'error') throw new Error(event.detail);
           if (event.type === 'result') result = event.payload;
-          if (event.type === 'progress' && event.stage === 'waiting') {
+          if (event.type === 'progress' && event.stage === 'retrying') {
+            const seconds=Number.isFinite(event.wait_seconds)?Math.max(0,event.wait_seconds):'…';
+            const part=Number.isSafeInteger(event.part)&&Number.isSafeInteger(event.total)?` · ส่วนที่ ${event.part}/${event.total}`:'';
+            const label=`Gemini ไม่พร้อมชั่วคราว (503)${part} · พักอีก ${seconds} วินาที ก่อนลองซ้ำ 1 ครั้งตามที่คุณเลือก`;
+            progress.update('extraction-progress',label);
+            output.textContent=label+' · คำขอเพิ่มเติมอาจใช้โควตาหรือมีค่า API';
+          } else if (event.type === 'progress' && event.stage === 'waiting') {
             const label=`โหมดประหยัด · กำลังพักคำขอ AI อีก ${Number.isFinite(event.wait_seconds)?Math.max(0,event.wait_seconds):'…'} วินาที`;
             progress.update(feature==='extract-references'?'extraction-progress':'ai-progress',label);
-            output.textContent=label+' · ไม่มีการเรียกซ้ำอัตโนมัติ';
+            output.textContent=label+' · ยังไม่ส่งคำขอถัดไป';
           } else if (event.type === 'progress' && (feature === 'clusters' || feature === 'intents')) {
             const label = feature==='intents'?'กำลังวิเคราะห์เจตนา citation ทีละชุด…':event.stage === 'metadata' ? 'กำลังเตรียมชื่อเรื่องและ abstract…' : event.stage === 'planning' ? 'กำลังกำหนดธีมร่วมสำหรับทุกชุด…' : 'กำลังจัดอ้างอิงทีละชุดตามธีมร่วม…';
             progress.update('ai-progress', label, event.total ? event.completed : null, event.total || null);

@@ -140,7 +140,7 @@ class AlibabaAdapterTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_errors_are_safe_and_preserve_useful_status(self):
         for upstream, application in [(400, 400), (401, 401), (403, 403), (402, 402),
-                                      (404, 422), (429, 429), (503, 502)]:
+                                      (404, 422), (429, 429), (503, 503)]:
             with self.subTest(status=upstream), self.assertLogs(ai_engine.logger, level='WARNING') as log:
                 with self.assertRaises(HTTPException) as caught:
                     await self.call(status=upstream)

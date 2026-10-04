@@ -121,6 +121,14 @@ async def maxplus_models(key, base_url=None):
         raise HTTPException(502, 'MaxPlus ไม่ได้ส่งรายการโมเดลแบบ OpenAI-compatible') from None
 
 
+def retry_after_seconds(value):
+    """Accept only bounded delta-seconds; never expose arbitrary upstream headers."""
+    value = str(value or '').strip()
+    if not re.fullmatch(r'[0-9]{1,10}', value):
+        return None
+    return min(int(value), 300)
+
+
 def raise_provider_error(response, provider):
     """Translate known error codes, without returning arbitrary provider text or secrets."""
     if 300 <= response.status_code < 400:
@@ -147,6 +155,11 @@ def raise_provider_error(response, provider):
     # Do not log the request, key, provider response body or arbitrary error messages.
     logger.warning('AI provider=%s upstream_http=%s reason=%s', provider, response.status_code, reason or 'unspecified')
     prefix = {'gemini': 'Gemini', 'maxplus': 'MaxPlus AI', 'alibaba': 'Alibaba Cloud Model Studio'}.get(provider, provider.capitalize())
+    if response.status_code == 503:
+        wait = retry_after_seconds(response.headers.get('Retry-After'))
+        headers = {'Retry-After': str(wait)} if wait is not None else None
+        raise HTTPException(503, prefix + ': บริการประมวลผลไม่พร้อมชั่วคราวหรือมีคำขอหนาแน่น (HTTP 503) '
+                             'กรุณารอสักครู่แล้วลองใหม่ สถานะนี้ไม่ได้ยืนยันว่าต้องชำระเงิน', headers=headers)
     if reason in {'API_KEY_INVALID', 'API_KEY_EXPIRED'} or ('api key not valid' in message):
         raise HTTPException(401, prefix + ': API key ไม่ถูกต้องหรือหมดอายุ กรุณาสร้างคีย์ใหม่สำหรับ Gemini API ใน Google AI Studio หากใช้ Gemini')
     restrictions = {

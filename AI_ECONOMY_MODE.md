@@ -39,6 +39,38 @@ Smaller batches can **increase the number of requests** even while reducing text
 per request. Pacing helps per-minute limits; it cannot restore exhausted daily
 quota or credits. No automatic retry after 429, failed JSON or timeout is added.
 
+## Gemini temporarily unavailable (HTTP 503)
+
+The local app and the Streamlit component use the same extraction handler and
+Economy options. A `503` in a streamed error is an HTTP response from the upstream
+service, not proof that Streamlit lost the Economy setting or that billing is
+required. Separate attempts may encounter different service availability or
+network routes. Increasing the app's read timeout does not repair an explicit
+upstream 503.
+
+In **Settings → AI → Economy Mode**, the additional checkbox
+**พักแล้วลองซ้ำเมื่อ Gemini ไม่พร้อม (503)** is off by default. It is available
+only with Gemini and Economy enabled, and applies only to bibliography extraction.
+When selected, it permits at most **one extra provider request for the entire
+extraction action**. Only the failed excerpt is repeated; completed excerpts are
+not repeated. The app waits at least the selected Economy interval or a valid
+numeric `Retry-After` delay (up to 300 seconds), and displays the
+countdown. The actual extra request is included in the Economy usage meter.
+
+This option may consume quota or incur provider charges. It does not retry 429,
+key/billing/model errors, timeouts or invalid JSON. A second 503 ends the action
+and preserves the previous result dataset. The setting is not persisted and is
+cleared when the provider/mode no longer qualifies. Changing the option cancels
+a frontend action still waiting to be sent, but does not change an extraction
+already running on the backend. Backend waits respond to task cancellation. This is temporary-error
+recovery, not a guarantee that Google's service will be available.
+
+After deploying a new GitHub version to Community Cloud, refresh the browser to
+load the new component UI, then enable Economy and the recovery option again.
+If the old UI remains, verify the deployed branch/entry point and reboot the app
+from Streamlit's management panel before refreshing. No API key should be posted
+in logs or shared when reporting these errors.
+
 ## Pacing, reuse and privacy
 
 `EconomyCaller` spaces provider-call starts within an action using a cancellable
@@ -50,9 +82,9 @@ the same account still consume its shared quota.
 
 Successful matching results can be reused in the current page. The cache is
 bounded to 12 results / 2 MB, with a 30-minute reuse lifetime. Its fingerprint
-includes the source/dataset, feature, provider/model/endpoint, mode settings and
-relevant references/question/conversation. Credentials are never part of cache
-keys. Credential/source/settings changes invalidate reuse; pending stale actions
+includes the source/dataset, feature, provider/model/endpoint, mode settings,
+the extraction recovery option and relevant references/question/conversation.
+Credentials are never part of cache keys. Credential/source/settings changes invalidate reuse; pending stale actions
 are rejected before sending. Failed or incomplete outputs are not remembered.
 
 The cache contains no PDF binary, headers or API keys and never uses IndexedDB,
@@ -64,6 +96,9 @@ mode and wait settings are not stored in remembered AI preferences.
 
 All seven AI POST actions accept `economy_mode=true` and `economy_interval=30`
 (integer 30–120). Existing requests that omit them retain ordinary behavior.
+Only bibliography extraction uses `retry_unavailable=true`; it is ignored when
+Gemini or Economy is not selected. Its default is false. Successful recovered
+extractions include `retried_extraction_batches` with the repeated part number.
 Successful Economy responses include `economy.enabled`, `requests`,
 `prompt_characters`, `interval_seconds`, `output_token_limits` and
 `context_notice`. Character counts describe prompts passed to the adapter, not

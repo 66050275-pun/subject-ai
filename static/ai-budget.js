@@ -1,6 +1,6 @@
 /* Optional AI pacing and result reuse. Credentials and PDFs never enter this cache. */
 (() => {
-  const mode=document.getElementById('ai-economy-mode'), interval=document.getElementById('ai-economy-interval');
+  const mode=document.getElementById('ai-economy-mode'), interval=document.getElementById('ai-economy-interval'), retry=document.getElementById('ai-retry-unavailable');
   const cache=new Map(), pending=new WeakMap(), reused=new WeakSet();
   const MAX_ENTRIES=12,MAX_BYTES=2*1024*1024,TTL=30*60*1000;
   let generation=0,busy=false,lastFinished=null,totalBytes=0;
@@ -13,6 +13,8 @@
   };
   const sync=()=>{
     const profile=config(); interval.disabled=!profile.enabled;
+    retry.disabled=!profile.enabled||document.getElementById('ai-provider').value!=='gemini';
+    if(retry.disabled)retry.checked=false;
     for(const host of document.querySelectorAll('[data-ai-budget-mode]'))host.textContent=profile.enabled
       ? `AI: โหมดประหยัด · พักอย่างน้อย ${profile.interval} วินาทีระหว่างคำขอ`
       : 'AI: โหมดปกติ';
@@ -75,11 +77,12 @@
     const characters=Number.isSafeInteger(economy.prompt_characters)?economy.prompt_characters:null;
     const seconds=Number.isSafeInteger(economy.interval_seconds)?economy.interval_seconds:null;
     const facts=[requests!==null?`${requests} คำขอ AI`:null,characters!==null?`ส่งข้อความรวม ${characters.toLocaleString()} อักขระ`:null,seconds!==null?`พักอย่างน้อย ${seconds} วินาที`:null].filter(Boolean);
+    if(value.retried_extraction_batches?.length)facts.push(`ลองซ้ำส่วนที่ ${value.retried_extraction_batches.join(', ')} หลัง Gemini 503 ตามตัวเลือกของคุณ`);
     host.textContent=(reused.has(value)?'ใช้ผลเดิมในแท็บนี้ · ไม่เรียก AI เพิ่ม · ผลเดิม: ':'โหมดประหยัด · ')+facts.join(' · ')
       +(typeof economy.context_notice==='string'?' · '+economy.context_notice.slice(0,500):'');
     host.classList.remove('hidden');
   };
-  for(const id of ['ai-provider','summary-model','maxplus-base-url','alibaba-region','gemini-model-picker','maxplus-model-picker','alibaba-model-picker','openai-key','ai-economy-mode','ai-economy-interval']){
+  for(const id of ['ai-provider','summary-model','maxplus-base-url','alibaba-region','gemini-model-picker','maxplus-model-picker','alibaba-model-picker','openai-key','ai-economy-mode','ai-economy-interval','ai-retry-unavailable']){
     const input=document.getElementById(id);input?.addEventListener('input',invalidate);input?.addEventListener('change',()=>{invalidate();sync();});
   }
   for(const button of document.querySelectorAll('#clear-key,[data-clear-key]'))button.addEventListener('click',invalidate);

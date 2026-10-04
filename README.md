@@ -68,7 +68,7 @@ For smaller AI workloads, enable **โหมดประหยัด API** in th
 
 The frontend now separates **Code extraction**, **AI extraction** and **DOI database** results into individual datasets. Switch between them to inspect their own counts, selections, graph and exports. See `static/app.css` for the redesigned responsive workspace.
 
-Large AI bibliographies are extracted in smaller batches with live progress. The extraction read timeout is 180 seconds per batch, with no automatic paid retries. The graph now groups labelled paper cards by access status or AI themes, supports drag/zoom/Fit, and opens an inspector for selection and navigation. Upstream provider timeouts can still occur.
+Large AI bibliographies are extracted in smaller batches with live progress. The extraction read timeout is 180 seconds per batch. Retries are off by default; Gemini Economy extraction offers an explicit checkbox to wait and retry one temporary 503 once per action, with possible quota/cost implications. The graph now groups labelled paper cards by access status or AI themes, supports drag/zoom/Fit, and opens an inspector for selection and navigation. Upstream provider timeouts can still occur.
 
 ## Find more Open Access PDFs
 

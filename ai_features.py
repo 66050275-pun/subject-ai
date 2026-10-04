@@ -1,7 +1,9 @@
 """AI endpoints with bounded inputs, typed outputs and transient credentials."""
 import asyncio
 import json
+import math
 import re
+import time
 from typing import Literal
 from fastapi.responses import StreamingResponse
 
@@ -12,7 +14,7 @@ from ai_clusters import normalize_clusters
 from ai_cluster_batches import cluster_in_batches, BATCH_SIZE
 from ai_economy import EconomyCaller, compact_source, compact_papers, compact_history
 from ai_engine import (generate, DEFAULT_MODELS, normalize_credentials, gemini_models, maxplus_models,
-                       alibaba_models, normalize_provider_base_url, AIResponseFormatError)
+                       alibaba_models, normalize_provider_base_url, AIResponseFormatError, retry_after_seconds)
 from extractor import (extract_source_metadata, ExtractionError, Reference, extract_summary_text,
                        extract_bibliography_text, extract_citation_contexts, extract_citation_counts, split_bibliography_batches, numbered_bibliography_entries, _title_and_year, _DOI_RE)
 from resolver import fetch_doi_summary_material, enrich_ai_references, resolve_references, validate_doi
@@ -174,6 +176,7 @@ async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'ex
                   file: UploadFile | None = File(None), doi: str | None = Form(None),
                   provider: str = Form('openai'), model: str = Form(''), base_url: str | None = Form(None), payload: str = Form('{}'), stream: bool = Form(False),
                   economy_mode: bool = Form(False), economy_interval: int = Form(30, ge=30, le=120),
+                  retry_unavailable: bool = Form(False),
                   key: str | None = Header(None, alias='X-AI-API-Key')):
     if not key or provider not in DEFAULT_MODELS:
         raise HTTPException(400, 'กรุณาเลือก provider และกรอก API key')
@@ -210,9 +213,11 @@ async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'ex
         source = 'PDF bibliography candidate'
         if stream:
             return bibliography_stream(data, text, provider, model, key, base_url, source,
-                                       economy_mode=economy_mode, economy_interval=economy_interval)
+                                       economy_mode=economy_mode, economy_interval=economy_interval,
+                                       retry_unavailable=retry_unavailable)
         result = await extract_bibliography_result(data, text, provider, model, key, base_url,
-                                                 economy_mode=economy_mode, economy_interval=economy_interval)
+                                                 economy_mode=economy_mode, economy_interval=economy_interval,
+                                                 retry_unavailable=retry_unavailable)
         return {**result, 'provider': provider, 'model': model, 'source': source}
     else:
         if economy_mode and feature in ('clusters', 'intents'):
@@ -365,9 +370,26 @@ async def economy_intents(data, papers, provider, model, key, base_url, source, 
             **economy_metadata(caller, 'ใช้ citation context แบบย่อ ชุดละไม่เกิน 8 รายการ รายการไม่มีบริบทเป็น Unknown โดยไม่เรียก AI')}
 
 
+async def _wait_gemini_retry(seconds, progress, part, total, *, clock=None, sleeper=None):
+    """Cancellable, action-local backoff; test clocks never touch real quota."""
+    now = clock or time.monotonic
+    sleep = sleeper or asyncio.sleep
+    deadline = now() + min(max(seconds, 0), 300)
+    last_report = None
+    remaining = deadline - now()
+    while remaining > .001:
+        wait = math.ceil(remaining)
+        if progress and (last_report is None or last_report - wait >= 5):
+            await progress({'type': 'progress', 'stage': 'retrying', 'wait_seconds': wait,
+                            'part': part, 'total': total, 'attempt': 1, 'max_retries': 1})
+            last_report = wait
+        await sleep(min(1, remaining))
+        remaining = deadline - now()
+
+
 async def extract_bibliography_result(data, text, provider, model, key, base_url, progress=None,
-                                      *, economy_mode=False, economy_interval=30):
-    """Small bounded requests, deterministic merging and no automatic paid retries."""
+                                      *, economy_mode=False, economy_interval=30, retry_unavailable=False):
+    """Bounded requests; at most one explicitly enabled Gemini 503 retry per action."""
     if economy_mode:
         try:
             chunks = split_bibliography_batches(text, max_chars=3000, max_entries=6, preserve_entries=True)
@@ -384,6 +406,8 @@ async def extract_bibliography_result(data, text, provider, model, key, base_url
     completed = 0
     source_entries = numbered_bibliography_entries(text)
     incomplete_batches = []
+    retried_batches = []
+    retry_available = provider == 'gemini' and economy_mode and retry_unavailable
 
     async def report(stage):
         if progress:
@@ -399,6 +423,21 @@ async def extract_bibliography_result(data, text, provider, model, key, base_url
         schema = json.dumps(Bibliography.model_json_schema())
     caller = EconomyCaller(generate, 'extract-references', interval_seconds=economy_interval, progress=progress) if economy_mode else None
 
+    async def request_part(index, prompt, **kwargs):
+        nonlocal retry_available
+        try:
+            return await (caller or generate)(provider, model, key, prompt, **kwargs)
+        except HTTPException as exc:
+            if not (retry_available and exc.status_code == 503 and not isinstance(exc, AIResponseFormatError)):
+                raise
+            # Consume the whole action's single retry before waiting; never retry
+            # completed batches, quota errors, malformed content, or timeouts.
+            retry_available = False
+            retried_batches.append(index + 1)
+            wait = retry_after_seconds((exc.headers or {}).get('Retry-After')) or 0
+            await _wait_gemini_retry(max(economy_interval, wait), progress, index + 1, total)
+            return await caller(provider, model, key, prompt, **kwargs)
+
     async def part(index, chunk):
         nonlocal completed
         async with semaphore:
@@ -413,7 +452,7 @@ async def extract_bibliography_result(data, text, provider, model, key, base_url
                       'Never invent DOI. Schema: '
                       + schema + '\nBibliography excerpt:\n' + chunk)
             try:
-                result = await (caller or generate)(provider, model, key, prompt, structured=True,
+                result = await request_part(index, prompt, structured=True,
                                         max_output_tokens=(2500 if compact_numbered else 4000) if economy_mode else 6000,
                                         base_url=base_url, timeout_seconds=180)
                 entries = (CompactBibliography if compact_numbered else Bibliography).model_validate(result).model_dump()['references']
@@ -426,7 +465,8 @@ async def extract_bibliography_result(data, text, provider, model, key, base_url
                 incomplete_batches.append(index + 1)
                 entries = []
             except HTTPException as exc:
-                raise HTTPException(exc.status_code, f'สกัดส่วนที่ {index + 1}/{total} ไม่สำเร็จ: {exc.detail}') from None
+                raise HTTPException(exc.status_code, f'สกัดส่วนที่ {index + 1}/{total} ไม่สำเร็จ: {exc.detail}',
+                                    headers=exc.headers) from None
             completed += 1
             await report('extracting')
             return entries
@@ -538,15 +578,17 @@ async def extract_bibliography_result(data, text, provider, model, key, base_url
     return {'source_paper': extract_source_metadata(data), 'extraction_warnings': warnings, 'recovered_reference_numbers': recovered, 'expected_reference_count':expected_count or None, 'extraction_complete':bool(source_entries) and not source_gaps and len(refs)==expected_count, 'filename': 'PDF bibliography candidate', 'results': resolved, 'total_references': len(resolved),
             'extraction_method': 'AI batched extraction — ตรวจเทียบ PDF ก่อนใช้', 'extraction_batches': total,
             'failed_extraction_batches': sorted(incomplete_batches),
+            **({'retried_extraction_batches': retried_batches} if retried_batches else {}),
             'citation_links_available': links_available, 'citation_link_count': sum(counts.values()),
             'cited_reference_count': len(counts),
             **economy_metadata(caller, 'ส่งบรรณานุกรมครบทุกส่วนเป็นชุดเล็ก ไม่ตัดจำนวนอ้างอิง รายการที่มีเลขกำกับเก็บข้อความต้นฉบับกลับมาในโค้ด')}
 
 
-def bibliography_stream(data, text, provider, model, key, base_url, source, *, economy_mode=False, economy_interval=30):
+def bibliography_stream(data, text, provider, model, key, base_url, source, *, economy_mode=False, economy_interval=30, retry_unavailable=False):
     async def work(progress):
         result = await extract_bibliography_result(data, text, provider, model, key, base_url, progress,
-                                                 economy_mode=economy_mode, economy_interval=economy_interval)
+                                                 economy_mode=economy_mode, economy_interval=economy_interval,
+                                                 retry_unavailable=retry_unavailable)
         return {**result, 'provider': provider, 'model': model, 'source': source}
     return ai_result_stream(work, 'ประมวลผลบรรณานุกรมไม่สำเร็จ')
 
@@ -559,7 +601,11 @@ def ai_result_stream(work, error_detail):
                 result = await work(queue.put)
                 await queue.put({'type': 'result', 'payload': result})
             except HTTPException as exc:
-                await queue.put({'type': 'error', 'status': exc.status_code, 'detail': exc.detail})
+                event = {'type': 'error', 'status': exc.status_code, 'detail': exc.detail}
+                wait = retry_after_seconds((exc.headers or {}).get('Retry-After'))
+                if wait is not None:
+                    event['retry_after_seconds'] = wait
+                await queue.put(event)
             except Exception:
                 await queue.put({'type': 'error', 'status': 500, 'detail': error_detail})
         task = asyncio.create_task(worker())

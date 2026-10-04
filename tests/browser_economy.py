@@ -54,6 +54,8 @@ if len(sys.argv)>1 and sys.argv[1]=='--serve':
         if path.endswith(('/clusters','/extract-references')) or (path.endswith('/intents') and economy and form.get('stream')=='true'):
             await send({'type':'http.response.start','status':200,'headers':[(b'content-type',b'application/x-ndjson')]})
             event={'type':'progress','stage':'waiting','wait_seconds':15}
+            if path.endswith('/extract-references') and economy and form.get('provider')=='gemini' and form.get('retry_unavailable')=='true':
+                event.update(stage='retrying',part=1,total=2,attempt=1,max_attempts=1)
             await send({'type':'http.response.body','body':(json.dumps(event)+'\n').encode(),'more_body':True})
             await asyncio.sleep(.8)
             if model=='test-incomplete':
@@ -93,7 +95,7 @@ try:
               const form=options.body instanceof FormData?options.body:null;
               window.economyPosts.push({url:String(url),at:Date.now(),economy:form?.get('economy_mode'),
                 interval:form?.get('economy_interval'),provider:form?.get('provider'),
-                model:form?.get('model'),payload:form?.get('payload')});
+                model:form?.get('model'),payload:form?.get('payload'),retry:form?.get('retry_unavailable')});
             }
             return original(url,options);
           };
@@ -108,13 +110,15 @@ try:
         def summary():
             frame.locator('#summary-button').click();expect(frame.locator('#summary-button')).to_be_enabled(timeout=30000)
         settings();assert not frame.locator('#ai-economy-mode').is_checked();assert frame.locator('#ai-economy-interval').is_disabled()
+        assert not frame.locator('#ai-retry-unavailable').is_checked() and frame.locator('#ai-retry-unavailable').is_disabled()
         frame.locator('#openai-key').fill('fake-economy-secret');frame.locator('#summary-model').fill('test');close()
         frame.locator('#file-input').set_input_files({'name':'paper.pdf','mimeType':'application/pdf','buffer':b'%PDF-1.4 fixture'})
         frame.locator('#analyze-button').click();frame.locator('#results-list .reference-card').first.wait_for(timeout=30000)
         assert posts('/api/references')[0]['economy'] is None
         summary();summary();assert len(posts('/api/summarize'))==2
         assert all(row['economy']=='false' and row['interval'] is None for row in posts('/api/summarize'))
-        settings();frame.locator('#ai-economy-mode').check();assert not frame.locator('#ai-economy-interval').is_disabled();close()
+        settings();frame.locator('#ai-economy-mode').check();assert not frame.locator('#ai-economy-interval').is_disabled()
+        assert frame.locator('#ai-retry-unavailable').is_disabled();close()
         summary();count=len(posts('/api/summarize'));summary();assert len(posts('/api/summarize'))==count
         assert 'ใช้ผลเดิมในแท็บนี้' in frame.locator('#ai-economy-usage').inner_text()
         assert '1,234' in frame.locator('#ai-economy-usage').inner_text() and 'ไม่เรียก AI เพิ่ม' in frame.locator('#ai-economy-usage').inner_text()
@@ -149,6 +153,34 @@ try:
         enabled=[row for row in ai if row['economy']=='true'];assert all(row['interval']=='30' for row in enabled)
         assert {row['url'] for row in enabled}=={'/api/summarize','/api/ai/intents','/api/ai/synthesis','/api/ai/clusters','/api/ai/qa','/api/ai/extract-references','/api/ai/compare'}
         assert all(enabled[index]['at']-enabled[index-1]['at']>=30000 for index in range(1,len(enabled)))
+        assert all(row['retry'] is None for row in posts())  # Existing actions never silently enable retries.
+        # An explicitly opted-in Gemini extraction can show its one 503 retry without enabling other features.
+        settings();frame.locator('#ai-provider').select_option('gemini');frame.locator('#openai-key').fill('fake-gemini-retry-secret')
+        frame.locator('#summary-model').fill('test');assert not frame.locator('#ai-retry-unavailable').is_disabled()
+        assert not frame.locator('#ai-retry-unavailable').is_checked();close()
+        frame.locator('[data-ai=extract-references]').click();expect(frame.locator('[data-ai=extract-references]')).to_be_enabled(timeout=30000)
+        assert posts('/api/ai/extract-references')[-1]['retry'] is None
+        settings();frame.locator('#ai-retry-unavailable').check();close()
+        before=len(posts('/api/ai/extract-references'));frame.locator('[data-ai=extract-references]').click()
+        frame.locator('#extraction-output').filter(has_text='503').wait_for(timeout=30000)
+        retry_text=frame.locator('#extraction-output').inner_text()
+        assert '1/2' in retry_text and '15' in retry_text and 'Gemini' in retry_text,retry_text
+        assert '503' not in frame.locator('#ai-output').inner_text()
+        expect(frame.locator('[data-ai=extract-references]')).to_be_enabled(timeout=30000)
+        assert len(posts('/api/ai/extract-references'))==before+1 and posts('/api/ai/extract-references')[-1]['retry']=='true'
+        summary();assert posts('/api/summarize')[-1]['retry'] is None
+        # Toggling only the retry setting cancels a pending AI action before its first HTTP request.
+        frame.locator('body').evaluate('()=>window.economyClock.fast=false')
+        before=len(posts('/api/summarize'));model('test-retry-wait');frame.locator('#summary-button').click()
+        frame.locator('#ai-progress').filter(has_text='กำลังพัก').wait_for()
+        settings();frame.locator('#ai-retry-unavailable').uncheck();close()
+        expect(frame.locator('#summary-button')).to_be_enabled(timeout=5000);assert len(posts('/api/summarize'))==before
+        frame.locator('body').evaluate('()=>window.economyClock.fast=true')
+        settings();frame.locator('#ai-retry-unavailable').check();frame.locator('#ai-economy-mode').uncheck()
+        assert frame.locator('#ai-retry-unavailable').is_disabled() and not frame.locator('#ai-retry-unavailable').is_checked()
+        frame.locator('#ai-economy-mode').check();frame.locator('#ai-retry-unavailable').check();frame.locator('#ai-provider').select_option('openai')
+        assert frame.locator('#ai-retry-unavailable').is_disabled() and not frame.locator('#ai-retry-unavailable').is_checked()
+        frame.locator('#openai-key').fill('fake-economy-secret');close()
         # HTTP failures, midstream failures and invalid HTTP-200 graph results cannot be reused.
         model('test-rate-limit');before=len(posts('/api/summarize'));summary();summary();assert len(posts('/api/summarize'))==before+2
         assert '429' in frame.locator('#summary-output').inner_text()
@@ -184,7 +216,9 @@ try:
         saved=Path(download.value.path()).read_text();assert 'economy-secret' not in saved and 'api_key' not in saved and 'PaperRefAIBudget' not in saved
         for width,height in [(390,844),(768,1024)]:
             page.set_viewport_size({'width':width,'height':height});page.wait_for_timeout(100);assert frame.locator('#settings-drawer').evaluate('el=>el.scrollWidth<=el.clientWidth')
+        frame.locator('[data-settings-section=ai]').click();frame.locator('#ai-provider').select_option('gemini');frame.locator('#ai-retry-unavailable').check()
         page.reload();frame=page.frame_locator('iframe').first;frame.locator('.hero h1').wait_for(timeout=30000);settings();assert not frame.locator('#ai-economy-mode').is_checked();assert frame.locator('#ai-economy-interval').input_value()=='30';assert frame.locator('#openai-key').input_value()==''
+        assert not frame.locator('#ai-retry-unavailable').is_checked() and frame.locator('#ai-retry-unavailable').is_disabled()
         assert not errors,errors;browser.close()
-    print('PASS: Economy default off, all seven AI forms, actual-cost/limited-context notices, bounded ephemeral success reuse, key/selection/chat/source invalidation, 30/60/120 pacing after responses, cancelled waiting actions, no retry/cache of 429/invalid/partial results, unchanged public searches, privacy and real Streamlit component')
+    print('PASS: Economy default off, all seven AI forms, explicit extraction-only Gemini 503 retry/progress/reset, retry-setting cancellation and no persistence, actual-cost/limited-context notices, bounded ephemeral success reuse, key/selection/chat/source invalidation, 30/60/120 pacing after responses, cancelled waiting actions, no retry/cache of 429/invalid/partial results, unchanged public searches, privacy and real Streamlit component')
 finally:server.terminate();server.wait(timeout=10)
