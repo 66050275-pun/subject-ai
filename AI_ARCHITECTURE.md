@@ -104,3 +104,18 @@ Mocked backend checks covered 64 references across multiple batches, bounded con
 ## Shared Open Access discovery
 
 `open_access.py` adds multi-copy repository discovery to the existing resolver used by code, AI and DOI extraction. `oa_features.py` exposes `POST /api/open-access/search` for explicit streamed deep searches; this endpoint does not invoke AI or use AI keys. The UI preserves extraction provenance, reference IDs/counts, citation context, selection and old PDF candidates. New optional server credentials are academic-service credentials, scoped to their own API hosts. See [OPEN_ACCESS.md](OPEN_ACCESS.md) for source contracts, access requirements, matching rules and download-verification limits.
+
+## Cluster response compatibility
+
+Structured responses accept one complete JSON object or array, including a single
+Markdown JSON fence or a prose prefix. Truncated/ambiguous JSON remains an error;
+no automatic paid retry is issued. Cluster results normalize `topics`/`themes`,
+`topic`/`theme`/`label`, `paper_ids`/`reference_ids`/`references` and numeric string
+IDs to the canonical `clusters[{name,ids}]`. Repeated IDs within a single group are
+deduplicated; unknown IDs, noninteger IDs and membership in multiple groups fail.
+3–5 named semantic groups are still required. References omitted by the model are
+returned as `unassigned_ids` with a warning and shown in a separate grey “ยังไม่จัดกลุ่ม”
+group, rather than inferred into a theme or dropped. The frontend validates the
+entire partition before replacing colours and saves successful graph themes.
+Cluster requests outside the existing 3–100 reference limit are explained before
+sending the PDF/key. These checks use mocked provider responses, not live keys.

@@ -165,6 +165,27 @@ async def gemini_models(key):
     return {'models': sorted(set(models)), 'truncated': bool(token)}
 
 
+def decode_structured_response(text):
+    """Read one complete JSON object/array, optionally in a Markdown fence."""
+    text = text.strip().lstrip('\ufeff')
+    fences = re.findall(r'```(?:json)?\s*([\s\S]*?)```', text, re.IGNORECASE)
+    if fences:
+        if len(fences) != 1:
+            raise ValueError('Ambiguous JSON blocks')
+        result = json.loads(fences[0])
+    else:
+        # Some compatible providers prepend a sentence despite JSON instructions.
+        start = re.search(r'[\[{]', text)
+        if not start:
+            raise ValueError('Missing JSON')
+        result, end = json.JSONDecoder().raw_decode(text[start.start():])
+        if re.search(r'[\[{]', text[start.start() + end:]):
+            raise ValueError('Multiple JSON values')
+    if not isinstance(result, (dict, list)):
+        raise ValueError('JSON object or array required')
+    return result
+
+
 async def generate(provider, model, key, prompt, *, structured=False, max_output_tokens=6000, base_url=None, timeout_seconds=90):
     model, key = normalize_credentials(provider, model, key)
     if provider == 'maxplus':
@@ -216,11 +237,7 @@ async def generate(provider, model, key, prompt, *, structured=False, max_output
         if not isinstance(text, str) or not text.strip():
             raise ValueError()
         if structured:
-            text = re.sub(r'^```(?:json)?\s*|\s*```$', '', text.strip())
-            result = json.loads(text)
-            if not isinstance(result, dict):
-                raise ValueError()
-            return result
+            return decode_structured_response(text)
         return text.strip()
     except (KeyError, IndexError, TypeError, ValueError):
         raise HTTPException(502, 'AI ส่งผลลัพธ์ไม่ครบหรือรูปแบบไม่ถูกต้อง ลองลดจำนวนรายการ') from None

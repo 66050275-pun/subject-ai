@@ -579,6 +579,7 @@
         if (aiBusy) throw new Error('รอคำขอ AI ปัจจุบันเสร็จก่อน');
         const requestVersion = sourceVersion; const requestDataset = activeDataset;
         const papers = (feature === 'synthesis' || feature === 'qa') ? allResults.filter(p => selectedPapers.has(p.reference_number)) : allResults;
+        if (feature === 'clusters' && (papers.length < 3 || papers.length > 100)) throw new Error(`การจัดกลุ่มรองรับ 3–100 อ้างอิง ชุดปัจจุบันมี ${papers.length} รายการ`);
         if (feature === 'synthesis' && (papers.length < 3 || papers.length > 5)) throw new Error('เลือก 3–5 references ก่อนสังเคราะห์');
         const form = new FormData();
         const file = feature === 'extract-references' ? selectedFile : (activeFile || (!activeDoi ? selectedFile : null));
@@ -655,11 +656,26 @@
             for (const intent of p.intents) { const item = allResults.find(r => r.reference_number === intent.id); if (item) { item.intent = intent.intent; item.intent_reason = intent.reason; item.citation_contexts = p.contexts[String(intent.id)] || []; } }
             renderResults(); output.textContent = 'แสดงเจตนาและบริบทบนการ์ดรายการอ้างอิงแล้ว';
           } else if (feature === 'clusters') {
-            clusterColors.clear();
-            p.clusters.forEach((c, i) => c.ids.forEach(id => clusterColors.set(id, {color: palette[i], name: c.name})));
+            const nextColors = new Map();
+            if (!Array.isArray(p.clusters) || p.clusters.length < 3 || p.clusters.length > 5) throw new Error('AI ส่งกลุ่มหัวข้อไม่ครบ ผลกราฟเดิมยังอยู่');
+            for (const [i, c] of p.clusters.entries()) {
+              if (typeof c.name !== 'string' || !c.name.trim() || !Array.isArray(c.ids) || !c.ids.length) throw new Error('AI ส่งรายละเอียดกลุ่มไม่ถูกต้อง ผลกราฟเดิมยังอยู่');
+              for (const id of c.ids) {
+                if (!Number.isSafeInteger(id) || nextColors.has(id) || !allResults.some(r => r.reference_number === id)) throw new Error('AI ส่งเลขอ้างอิงไม่ถูกต้อง ผลกราฟเดิมยังอยู่');
+                nextColors.set(id, {color: palette[i], name: c.name});
+              }
+            }
+            if (!Array.isArray(p.unassigned_ids || [])) throw new Error('AI ส่งรายการที่ยังไม่จัดกลุ่มไม่ถูกต้อง ผลกราฟเดิมยังอยู่');
+            for (const id of p.unassigned_ids || []) {
+              if (!Number.isSafeInteger(id) || nextColors.has(id) || !allResults.some(r => r.reference_number === id)) throw new Error('AI ส่งเลขอ้างอิงไม่ถูกต้อง ผลกราฟเดิมยังอยู่');
+              nextColors.set(id, {color:'#64748b', name:'ยังไม่จัดกลุ่ม'});
+            }
+            if (nextColors.size !== allResults.length) throw new Error('AI จัดกลุ่มอ้างอิงไม่ครบ ผลกราฟเดิมยังอยู่');
+            clusterColors = nextColors;
             document.getElementById('network-panel').open = true;
             setView('references');
-            output.textContent = 'จัดสีธีมบนกราฟแล้ว · ธีมเป็นผลวิเคราะห์ AI จากชื่อเรื่องและ abstract ที่พบ';
+            persistWorkspace();
+            output.textContent = 'จัดสีธีมบนกราฟแล้ว · ธีมเป็นผลวิเคราะห์ AI จากชื่อเรื่องและ abstract ที่พบ' + (p.unassigned_ids?.length ? `\nAI ยังไม่จัดกลุ่ม ${p.unassigned_ids.length} รายการ แสดงสีเทาโดยไม่เดาธีมให้` : '');
           } else if (feature === 'extract-references') {
             p.source_paper ||= datasets.get('code')?.payload.source_paper || null;
             p.filename = selectedFile.name.replace(/\.pdf$/i, '') || 'งานวิจัย';

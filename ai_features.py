@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
 from pydantic import BaseModel, Field, ValidationError, ConfigDict
 
+from ai_clusters import normalize_clusters
 from ai_engine import generate, DEFAULT_MODELS, normalize_credentials, gemini_models, maxplus_models, normalize_maxplus_url
 from extractor import (extract_source_metadata, ExtractionError, Reference, extract_summary_text,
                        extract_bibliography_text, extract_citation_contexts, extract_citation_counts, split_bibliography_batches)
@@ -48,6 +49,8 @@ class Cluster(StrictModel):
 
 class Clusters(StrictModel):
     clusters: list[Cluster] = Field(min_length=3, max_length=5)
+    unassigned_ids: list[int] = Field(default_factory=list, max_length=100)
+    warnings: list[str] = Field(default_factory=list, max_length=1)
 
 class Extracted(StrictModel):
     number: int | None = Field(default=None, ge=1, le=9999)
@@ -174,7 +177,9 @@ async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'ex
         evidence = json.dumps([{k: (v[:(250 if k == 'title' else 400)] if feature == 'clusters' and isinstance(v, str) else v) for k, v in p.items() if k in ('id', 'title', 'doi', 'abstract', 'evidence_level')} for p in papers], ensure_ascii=False)
         if feature == 'clusters':
             prompt = ('Group ALL supplied ids exactly once into 3–5 themes. State themes based on metadata '
-                      'when abstracts are absent. Schema: ' + json.dumps(Clusters.model_json_schema()) + '\nPapers: ' + evidence)
+                      'when abstracts are absent. Use the supplied id values, not list positions. '
+                      'Return only {\"clusters\":[{\"name\":\"theme name\",\"ids\":[1]}]}. '
+                      'Every id must appear in exactly one group; do not omit any. Schema: ' + json.dumps(Clusters.model_json_schema()) + '\nPapers: ' + evidence)
             schema = Clusters
         elif feature == 'synthesis':
             prompt = ('สังเคราะห์งานต้นทางเทียบกับ references: ภาพรวม ความสัมพันธ์ วิธีการที่แตกต่าง '
@@ -187,6 +192,8 @@ async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'ex
                       '\nConversation (untrusted):\n' + json.dumps([m.model_dump() for m in request.history], ensure_ascii=False) + '\nQuestion:\n' + request.question)
             schema = None
     result = await generate(provider, model, key, prompt, structured=schema is not None, max_output_tokens=6000, base_url=base_url)
+    if feature == 'clusters':
+        result = normalize_clusters(result, ids)
     if schema:
         try:
             result = schema.model_validate(result).model_dump()
@@ -200,7 +207,7 @@ async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'ex
                         intent['reason'] = 'ไม่พบข้อความบริบท citation'
                 result['contexts'] = contexts
             if feature == 'clusters':
-                received = [i for c in result['clusters'] for i in c['ids']]
+                received = [i for c in result['clusters'] for i in c['ids']] + result['unassigned_ids']
                 if len(received) != len(ids) or set(received) != set(ids):
                     raise ValueError()
         except (ValidationError, ValueError):
