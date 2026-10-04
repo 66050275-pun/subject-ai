@@ -49,7 +49,8 @@
                 <p class="pdf-preview-note">หากภาพหรือฟอนต์ในพรีวิวไม่ครบ ให้เลือก “เปิดแยก” เพื่อดูไฟล์ต้นฉบับ</p>
               </div>
             </section>
-            <div class="extraction-methods"><div class="method-card"><span class="method-label">⌘ CODE EXTRACTION</span><h4>สกัดด้วยโค้ด</h4><p>อ่านบรรณานุกรมอัตโนมัติ<br>เริ่มได้ทันที ไม่ใช้ AI key</p><button id="analyze-button" type="button" disabled class="primary-button"><span id="button-spinner" class="spin hidden" aria-hidden="true">◌</span><span id="button-label">สกัดด้วยโค้ด →</span></button></div><div class="method-card ai-method"><span class="method-label">✦ AI EXTRACTION</span><h4>สกัดด้วย AI</h4><p>ตัวเลือกสำหรับรูปแบบซับซ้อน<br>ใช้ API key และแสดงผลแยกชุด<br>ไฟล์ยาวจะแบ่งเป็นหลายคำขอ</p><button data-ai="extract-references" type="button" class="violet-button">สกัดด้วย AI →</button><a href="#ai-settings" class="method-settings">ตั้งค่า API key ⚙</a></div></div>
+            <div class="extraction-methods"><div class="method-card"><span class="method-label">⌘ CODE EXTRACTION</span><h4>สกัดด้วยโค้ด</h4><p>อ่านบรรณานุกรมอัตโนมัติ<br>เริ่มได้ทันที ไม่ใช้ AI key</p><button id="analyze-button" type="button" disabled class="primary-button"><span id="button-spinner" class="spin hidden" aria-hidden="true">◌</span><span id="button-label">สกัดด้วยโค้ด →</span></button></div><div class="method-card ai-method"><span class="method-label">✦ AI EXTRACTION</span><h4>สกัดด้วย AI</h4><p>ตัวเลือกสำหรับรูปแบบซับซ้อน<br>ใช้ API key และแสดงผลแยกชุด<br>ไฟล์ยาวจะแบ่งเป็นหลายคำขอ</p><button data-ai="extract-references" type="button" class="violet-button">สกัดด้วย AI →</button><a href="#ai-settings" class="method-settings">ตั้งค่า API key ⚙</a><p data-ai-budget-mode class="mt-2 text-xs"></p></div></div>
+            <p id="extraction-economy-usage" role="status" aria-live="polite" class="hidden mt-2 text-xs text-slate-600"></p>
             <div id="code-progress" class="operation-progress hidden"></div><div id="extraction-progress" class="operation-progress ai-progress hidden"></div><div id="extraction-output" role="status" class="output-block"></div>
           </div>
           <div class="panel doi-panel"><div class="panel-heading"><span class="icon-tile violet">→</span><div><h3>มี DOI อยู่แล้ว?</h3><p>ตามหาเครือข่ายของเปเปอร์ได้เลย</p></div></div><div class="doi-symbol" aria-hidden="true">doi<span>→</span></div><label for="doi-input">DOI หรือ DOI URL</label><input id="doi-input" type="text" inputmode="url" placeholder="10.xxxx/… หรือ https://doi.org/…"><button id="doi-button" class="dark-button" type="button">ค้นหาด้วย DOI →</button><div id="doi-progress" class="operation-progress hidden"></div><div class="doi-caption"><span>→</span><p>ดูงานที่เปเปอร์นี้อ้างถึง และงานที่อ้างถึงเปเปอร์นี้ จากฐานข้อมูลวิชาการเปิด</p></div></div>
@@ -176,6 +177,8 @@
 
       <section id="ai-workspace" class="workspace-section ai-workspace">
         <div class="section-heading"><div><div class="section-kicker">03 / AI RESEARCH LAB</div><h2>เปลี่ยนข้อมูล ให้เป็นไอเดีย <span class="sparkle">✦</span></h2></div><a href="#ai-settings" class="pill-link">ใช้ AI ของคุณเอง →</a></div>
+        <p data-ai-budget-mode class="mt-2 text-xs text-slate-600" role="status"></p>
+        <p id="ai-economy-usage" class="hidden mt-2 text-xs text-slate-600" role="status" aria-live="polite"></p>
 
         <div id="ai-progress" class="operation-progress ai-progress hidden"></div>
         <p id="selection-count" class="selection-banner">เลือกเปเปอร์บนการ์ดรายการอ้างอิง 0/5 รายการ</p>
@@ -236,15 +239,17 @@
         <button id="gemini-check" type="button" class="mt-3 hidden rounded-lg border border-indigo-200 bg-white px-4 py-2 text-sm text-indigo-700">ตรวจคีย์และโหลดโมเดล Gemini</button>
         <p id="gemini-check-result" role="status" class="mt-2 text-sm text-slate-600"></p>
 <div class="settings-footer"><p>ข้อความและ metadata จะส่งไปยังบริการที่เลือก ค่า API คิดกับบัญชีของคุณ คีย์เก็บในหน่วยความจำหน้านี้ ผ่านเซิร์ฟเวอร์เพื่อเรียกบริการ และไม่บันทึกในคุกกี้หรือ storage</p><button id="clear-key" type="button" class="text-button">ล้าง API key</button></div></div></details>
+        <div class="preference-card"><label><input id="ai-economy-mode" type="checkbox" aria-describedby="ai-economy-help"> โหมดประหยัด API (Economy Mode)</label><p id="ai-economy-help">ใช้บริบทที่เกี่ยวข้องแบบจำกัด ย่อคำตอบ และประมวลผลทีละชุดพร้อมพักคำขอ ใช้เวลานานขึ้นแต่ไม่ลดจำนวนอ้างอิง ไม่รับรองว่าจะอยู่ในโควตาฟรีหรือใช้ได้กับทุกโมเดล</p><label for="ai-economy-interval">พักระหว่างคำขออย่างน้อย</label><select id="ai-economy-interval" class="mt-1 block w-full rounded-lg border p-2" disabled><option value="30">30 วินาที</option><option value="60">60 วินาที</option><option value="120">120 วินาที</option></select><p>ใช้ผลเดิมเมื่อคำขอเหมือนเดิมในแท็บนี้ เก็บ cache ชั่วคราวในหน่วยความจำ ไม่เก็บคีย์หรือ PDF และไม่จำโหมดนี้หลังรีเฟรช</p></div>
         <div class="preference-card"><label><input id="remember-ai-preferences" type="checkbox"> จำ provider และโมเดลบนอุปกรณ์นี้</label><p>เป็นตัวเลือก ใช้ local storage เก็บเฉพาะการตั้งค่า ไม่เก็บ API key, PDF หรือบทสนทนา ปิดเพื่อถอนความยินยอมและลบค่าที่จำไว้</p><p id="preferences-status" role="status"></p></div>
       </section>
       <section id="settings-workspace" class="drawer-section hidden"><div class="drawer-intro"><h3>ไปยังสิ่งที่ต้องการ</h3><p>เครื่องมือทั้งหมดในพื้นที่เดียว</p></div><div class="drawer-shortcuts"><button type="button" data-jump="paper-input">↑ PDF และ DOI <span>เลือกงานวิจัย · สกัดด้วยโค้ดหรือ AI →</span></button><button type="button" data-jump="results-section">▤ รายการอ้างอิงและกราฟ <span>ค้นหา PDF · กรองผล · ดาวน์โหลดรายการ →</span></button><button type="button" data-jump="ai-workspace">✦ AI Research Lab <span>สรุป · วิเคราะห์ citation · สังเคราะห์ · Q&A →</span></button></div><div class="privacy-card"><h4>ใช้บนอุปกรณ์ร่วมกัน</h4><p>ล้าง API key และดาวน์โหลดผลก่อนปิดแท็บ การรีเฟรชหน้าอาจทำให้ไฟล์ แช็ต และผลที่ไม่ได้บันทึกหาย เปิดผลที่บันทึกแล้วได้จากหมวดประวัติ</p><button type="button" data-clear-key class="text-button">ล้าง API key ตอนนี้</button><p id="key-clear-status" role="status"></p></div></section>
-      <section id="settings-history" class="drawer-section hidden"><div class="drawer-intro"><h3>กลับไปดูสิ่งที่ค้นพบ</h3><p>เก็บผลใน IndexedDB ของเบราว์เซอร์นี้ ไม่ซิงก์คลาวด์ ไม่เก็บ API key หรือ PDF เก็บ metadata สรุป AI และตำแหน่งกราฟในอุปกรณ์นี้</p></div><div class="preference-card"><label><input id="history-enabled" type="checkbox" checked disabled> บันทึกประวัติการค้นหาในอุปกรณ์นี้</label><p>ปิดเพื่อหยุดบันทึกใหม่ ประวัติเดิมยังอยู่ เก็บล่าสุดสูงสุด 50 รายการ / 8 MB เมื่อเต็มจะนำรายการเก่าสุดออก ผู้ที่ใช้เบราว์เซอร์เดียวกันอาจเปิดดูได้</p></div><div class="preference-card"><label><input id="history-incognito" type="checkbox"> โหมดไม่บันทึก (Incognito / Ephemeral)</label><p>หยุดบันทึกชั่วคราวในแท็บนี้และใช้ธีมมืด เมื่อปิดจะกลับไปใช้การตั้งค่าบันทึกเดิม ประวัติเดิมยังอยู่</p></div><label class="history-search-label">ค้นหาชื่อเรื่อง ผู้แต่ง หรือปี<input id="history-search" type="search" placeholder="ค้นหาในประวัติ…"></label><div class="workspace-actions"><p id="workspace-selection">เลือก 0 เปเปอร์</p><button id="workspace-shared" type="button">หาอ้างอิงร่วม</button><button id="workspace-bib" type="button">ส่งออก .bib ที่เลือก</button><button id="workspace-compare" type="button">เปรียบเทียบ AI (2–3 เรื่อง)</button><p>ส่ง metadata/abstract/สรุปที่บันทึกของเปเปอร์ที่เลือกไปยัง AI เมื่อกดเปรียบเทียบ คิดค่า API ตามบัญชีของคุณ</p><div id="workspace-progress" class="operation-progress ai-progress hidden"></div><div id="workspace-output" class="workspace-output" role="status"></div></div><div class="history-toolbar"><button id="history-export" type="button" disabled>ดาวน์โหลดสำรอง</button><label class="history-import-label">นำเข้า JSON<input id="history-import" type="file" accept=".json,application/json" class="sr-only"></label><button id="history-clear" type="button" disabled>ล้างประวัติ</button></div><p id="history-status" role="status"></p><p id="history-count" class="small-label"></p><div id="history-list"></div><div class="privacy-card"><h4>เก็บเฉพาะผลการค้นหา</h4><p>เปิดผลเดิมได้โดยไม่ค้นใหม่ แต่การวิเคราะห์ AI ที่ต้องอ่าน PDF ต้องแนบไฟล์อีกครั้ง การล้างข้อมูลเว็บไซต์หรือโหมดส่วนตัวอาจทำให้ประวัติหาย ดาวน์โหลดสำรองไว้หากต้องการย้ายเครื่องหรือย้าย URL แอป</p></div></section>
+      <section id="settings-history" class="drawer-section hidden"><div class="drawer-intro"><h3>กลับไปดูสิ่งที่ค้นพบ</h3><p>เก็บผลใน IndexedDB ของเบราว์เซอร์นี้ ไม่ซิงก์คลาวด์ ไม่เก็บ API key หรือ PDF เก็บ metadata สรุป AI และตำแหน่งกราฟในอุปกรณ์นี้</p></div><div class="preference-card"><label><input id="history-enabled" type="checkbox" checked disabled> บันทึกประวัติการค้นหาในอุปกรณ์นี้</label><p>ปิดเพื่อหยุดบันทึกใหม่ ประวัติเดิมยังอยู่ เก็บล่าสุดสูงสุด 50 รายการ / 8 MB เมื่อเต็มจะนำรายการเก่าสุดออก ผู้ที่ใช้เบราว์เซอร์เดียวกันอาจเปิดดูได้</p></div><div class="preference-card"><label><input id="history-incognito" type="checkbox"> โหมดไม่บันทึก (Incognito / Ephemeral)</label><p>หยุดบันทึกชั่วคราวในแท็บนี้และใช้ธีมมืด เมื่อปิดจะกลับไปใช้การตั้งค่าบันทึกเดิม ประวัติเดิมยังอยู่</p></div><label class="history-search-label">ค้นหาชื่อเรื่อง ผู้แต่ง หรือปี<input id="history-search" type="search" placeholder="ค้นหาในประวัติ…"></label><div class="workspace-actions"><p id="workspace-selection">เลือก 0 เปเปอร์</p><button id="workspace-shared" type="button">หาอ้างอิงร่วม</button><button id="workspace-bib" type="button">ส่งออก .bib ที่เลือก</button><button id="workspace-compare" type="button">เปรียบเทียบ AI (2–3 เรื่อง)</button><p>ส่ง metadata/abstract/สรุปที่บันทึกของเปเปอร์ที่เลือกไปยัง AI เมื่อกดเปรียบเทียบ คิดค่า API ตามบัญชีของคุณ</p><div id="workspace-progress" class="operation-progress ai-progress hidden"></div><div id="workspace-output" class="workspace-output" role="status"></div><p id="workspace-economy-usage" role="status" aria-live="polite" class="hidden mt-2 text-xs text-slate-600"></p></div><div class="history-toolbar"><button id="history-export" type="button" disabled>ดาวน์โหลดสำรอง</button><label class="history-import-label">นำเข้า JSON<input id="history-import" type="file" accept=".json,application/json" class="sr-only"></label><button id="history-clear" type="button" disabled>ล้างประวัติ</button></div><p id="history-status" role="status"></p><p id="history-count" class="small-label"></p><div id="history-list"></div><div class="privacy-card"><h4>เก็บเฉพาะผลการค้นหา</h4><p>เปิดผลเดิมได้โดยไม่ค้นใหม่ แต่การวิเคราะห์ AI ที่ต้องอ่าน PDF ต้องแนบไฟล์อีกครั้ง การล้างข้อมูลเว็บไซต์หรือโหมดส่วนตัวอาจทำให้ประวัติหาย ดาวน์โหลดสำรองไว้หากต้องการย้ายเครื่องหรือย้าย URL แอป</p></div></section>
       <section id="settings-privacy" class="drawer-section hidden"><div class="drawer-intro"><h3>ข้อมูลไปที่ไหนบ้าง?</h3><p>เลือกใช้แต่ละฟีเจอร์ได้ โดยไม่ต้องเปิดการจำค่าตั้งต้น</p></div><div class="privacy-card"><h4>PDF และการค้นหา</h4><p>PDF ผ่านเซิร์ฟเวอร์เพื่อสกัดข้อความ การค้นอ้างอิงส่ง DOI ชื่อเรื่อง หรือ metadata ไปยังฐานข้อมูลวิชาการที่ใช้ ฟีเจอร์ AI ส่งบริบทที่จำเป็นและคีย์ผ่านเซิร์ฟเวอร์ไปยัง provider ที่เลือก</p></div><div class="privacy-card"><h4>API key และผลการทำงาน</h4><p>แอปไม่บันทึกคีย์ PDF หรือแช็ตลง storage ของเบราว์เซอร์หรือไฟล์ถาวรของแอป ประวัติรายการอ้างอิงเก็บใน IndexedDB บนอุปกรณ์นี้เมื่อเปิดบันทึก และลบได้ในหมวดประวัติ ข้อมูลคำขออยู่ในหน่วยความจำระหว่างประมวลผล นโยบายเก็บข้อมูลของผู้ให้บริการ AI และผู้ให้บริการโฮสต์อาจแตกต่างกัน</p></div><div class="privacy-card"><h4>คุกกี้และบริการภายนอก</h4><p>แอปไม่ตั้งคุกกี้โฆษณาหรือติดตาม Streamlit อาจใช้คุกกี้ที่จำเป็นสำหรับความปลอดภัยและการเชื่อมต่อ ฟอนต์โหลดจาก Google Fonts และลิงก์บทความเปิดเว็บไซต์ภายนอกซึ่งมีนโยบายของตนเอง</p><p>การจำ provider/โมเดลเป็นตัวเลือกที่ปิดไว้ก่อน และถอนโดยปิดสวิตช์ในหมวดเชื่อมต่อ AI ได้ทุกเมื่อ</p></div><div class="privacy-card"><h4>ก่อนส่งข้อมูล</h4><p>เลือก provider ที่คุณยอมรับนโยบายข้อมูล และหลีกเลี่ยงการส่งเอกสารที่มีข้อมูลส่วนบุคคลหรือข้อมูลที่คุณไม่มีสิทธิ์แชร์</p></div></section>
     </div><div class="drawer-foot"><span class="status-dot"></span> Your keys. Your choices.</div>
   </dialog>
   <script src="/static/progress.js"></script>
   <script src="/static/settings.js"></script>
+  <script src="/static/ai-budget.js"></script>
   <script src="/static/workspace.js"></script>
   <script src="/static/history.js"></script>
   <script src="/static/graph.js"></script>
@@ -363,6 +368,7 @@
         }
       }
       function resetDatasets() {
+        window.PaperRefAIBudget.invalidate();
         oaController?.abort();
         metadataController?.abort();
         datasets.clear(); activeDataset = null; sourceVersion += 1;
@@ -676,26 +682,37 @@
         if (feature === 'clusters' && (papers.length < 3 || papers.length > 100)) throw new Error(`การจัดกลุ่มรองรับ 3–100 อ้างอิง ชุดปัจจุบันมี ${papers.length} รายการ`);
         if (feature === 'synthesis' && (papers.length < 3 || papers.length > 5)) throw new Error('เลือก 3–5 references ก่อนสังเคราะห์');
         const form = new FormData();
+        const economyProfile=window.PaperRefAIBudget.config();
         const file = feature === 'extract-references' ? selectedFile : (activeFile || (!activeDoi ? selectedFile : null));
         const doi = activeDoi || document.getElementById('doi-input').value.trim();
         if (feature === 'extract-references' && !file) throw new Error('เลือก PDF ก่อนสกัดด้วย AI');
         if (file) form.append('file', file); else if (doi) form.append('doi', doi); else throw new Error('เลือก PDF หรือ DOI ก่อนใช้ AI');
-        if (feature === 'extract-references' || feature === 'clusters') form.append('stream', 'true');
+        if (feature === 'extract-references' || feature === 'clusters' || (feature === 'intents' && economyProfile.enabled)) form.append('stream', 'true');
         form.append('provider', providerSelect.value);
         if (providerSelect.value === 'maxplus') form.append('base_url', document.getElementById('maxplus-base-url').value.trim());
         if (providerSelect.value === 'alibaba') form.append('base_url', document.getElementById('alibaba-region').value);
         form.append('model', document.getElementById('summary-model').value.trim());
         form.append('payload', JSON.stringify({papers: feature === 'extract-references' ? [] : papers.map(p => ({id: p.reference_number, title: String(p.matched_title || p.title || p.original_text || '').slice(0, 1200), doi: p.doi || null, year: p.year ? String(p.year) : null, original_text: String(p.original_text || '').slice(0, 4000)})), ...extra}));
+        window.PaperRefAIBudget.append(form,economyProfile);
+        const descriptor={feature,sourceVersion:requestVersion,dataset:requestDataset,
+          source:file?{name:file.name,size:file.size,modified:file.lastModified}:doi,
+          provider:form.get('provider'),model:form.get('model'),base_url:form.get('base_url')||'',
+          selected:[...selectedPapers].sort((a,b)=>a-b),payload:form.get('payload'),economy:economyProfile};
         aiBusy = true; updateDatasetTabs();
         const progressId = feature === 'extract-references' ? 'extraction-progress' : 'ai-progress';
         const progressLabels = {summary:'กำลังสกัดบริบทและสรุปงานวิจัย…', intents:'กำลังวิเคราะห์บริบท citation…', synthesis:'กำลังสังเคราะห์วรรณกรรม…', clusters:'กำลังจัดกลุ่มธีมบนกราฟ…', qa:'กำลังอ่านบริบทและสร้างคำตอบ…', 'extract-references':'กำลังเตรียม PDF และสกัดบรรณานุกรมด้วย AI…'};
         progress.start(progressId, progressLabels[feature] || 'กำลังประมวลผลด้วย AI…');
         document.querySelectorAll('[data-ai], #summary-button, #qa-form button').forEach(b => b.disabled = true);
         try {
-          const response = await fetch(feature === 'summary' ? '/api/summarize' : '/api/ai/' + feature, {method: 'POST', body: form, headers: {'X-AI-API-Key': key}});
-          const payload = response.ok && response.headers.get('content-type')?.includes('application/x-ndjson')
-            ? await readExtractionStream(response, feature) : await response.json();
-          if (!response.ok) throw new Error(typeof payload.detail === 'string' ? payload.detail : 'ข้อมูลคำขอไม่ถูกต้อง');
+          const payload = await window.PaperRefAIBudget.run(async()=>{
+            const response = await fetch(feature === 'summary' ? '/api/summarize' : '/api/ai/' + feature, {method: 'POST', body: form, headers: {'X-AI-API-Key': key}});
+            const result = response.ok && response.headers.get('content-type')?.includes('application/x-ndjson')
+              ? await readExtractionStream(response, feature) : await response.json();
+            if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : 'ข้อมูลคำขอไม่ถูกต้อง');
+            return result;
+          },{profile:economyProfile,descriptor,
+            isCurrent:()=>requestVersion===sourceVersion&&requestDataset===activeDataset,
+            onWait:seconds=>progress.update(progressId,`โหมดประหยัด · กำลังพักก่อนคำขอถัดไป อีก ${seconds} วินาที`)});
           if (requestVersion !== sourceVersion || requestDataset !== activeDataset) throw new Error('งานต้นทางหรือชุดผลลัพธ์เปลี่ยนแล้ว กรุณาเรียกเครื่องมือกับชุดปัจจุบัน');
           if (Array.isArray(payload.resolved_papers)) {
             for (const result of payload.resolved_papers) {
@@ -717,14 +734,18 @@
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let pending = '', result = null;
-        const output = document.getElementById(feature === 'clusters' ? 'ai-output' : 'extraction-output');
+        const output = document.getElementById(feature === 'extract-references' ? 'extraction-output' : 'ai-output');
         const consume = line => {
           if (!line.trim()) return;
           const event = JSON.parse(line);
           if (event.type === 'error') throw new Error(event.detail);
           if (event.type === 'result') result = event.payload;
-          if (event.type === 'progress' && feature === 'clusters') {
-            const label = event.stage === 'metadata' ? 'กำลังเตรียมชื่อเรื่องและ abstract…' : event.stage === 'planning' ? 'กำลังกำหนดธีมร่วมสำหรับทุกชุด…' : 'กำลังจัดอ้างอิงทีละชุดตามธีมร่วม…';
+          if (event.type === 'progress' && event.stage === 'waiting') {
+            const label=`โหมดประหยัด · กำลังพักคำขอ AI อีก ${Number.isFinite(event.wait_seconds)?Math.max(0,event.wait_seconds):'…'} วินาที`;
+            progress.update(feature==='extract-references'?'extraction-progress':'ai-progress',label);
+            output.textContent=label+' · ไม่มีการเรียกซ้ำอัตโนมัติ';
+          } else if (event.type === 'progress' && (feature === 'clusters' || feature === 'intents')) {
+            const label = feature==='intents'?'กำลังวิเคราะห์เจตนา citation ทีละชุด…':event.stage === 'metadata' ? 'กำลังเตรียมชื่อเรื่องและ abstract…' : event.stage === 'planning' ? 'กำลังกำหนดธีมร่วมสำหรับทุกชุด…' : 'กำลังจัดอ้างอิงทีละชุดตามธีมร่วม…';
             progress.update('ai-progress', label, event.total ? event.completed : null, event.total || null);
             output.textContent = `${label}${event.total ? ` ${event.completed}/${event.total} ขั้นตอน` : ''} · ใช้หลายคำขอ API และไม่มีการเรียกซ้ำอัตโนมัติ`;
           } else if (event.type === 'progress') {
@@ -744,22 +765,27 @@
           }
           consume(pending);
           if (!result && feature === 'clusters') throw new Error('การเชื่อมต่อจบก่อนจัดกลุ่มครบ ผลกราฟเดิมยังอยู่');
+          if (!result && feature === 'intents') throw new Error('การเชื่อมต่อจบก่อนวิเคราะห์บริบทครบ ผลการ์ดเดิมยังอยู่');
           if (!result) throw new Error('การเชื่อมต่อจบก่อนสกัดครบ ผลชุดเดิมยังอยู่ ลองใช้โมเดลอื่นหรือแนบเฉพาะหน้าบรรณานุกรม');
           return result;
         } finally { await reader.cancel().catch(() => {}); }
       }
       document.getElementById('summary-button').onclick = async () => {
         const output = document.getElementById('summary-output');
+        window.PaperRefAIBudget.report(null);
         output.classList.remove('hidden'); output.textContent = 'กำลังสรุป…';
-        try { const p = await callAI('summary'); const record=datasets.get(activeDataset);if(record){record.payload.workspace ||= {graphs:{}};record.payload.workspace.summary=String(p.summary).slice(0,12000);persistWorkspace();} output.textContent = `${p.source} · ${p.provider} · ${p.model}\n\n${p.summary}`; }
+        try { const p = await callAI('summary'); if(typeof p.summary!=='string'||!p.summary.trim())throw new Error('AI ไม่ส่งข้อความสรุปที่อ่านได้');const record=datasets.get(activeDataset);if(record){record.payload.workspace ||= {graphs:{}};record.payload.workspace.summary=String(p.summary).slice(0,12000);persistWorkspace();} output.textContent = `${p.source} · ${p.provider} · ${p.model}\n\n${p.summary}`;window.PaperRefAIBudget.remember(p);window.PaperRefAIBudget.report(p); }
         catch (e) { output.textContent = e.message; }
       };
       document.querySelectorAll('[data-ai]').forEach(button => button.onclick = async () => {
         const output = document.getElementById(button.dataset.ai === 'extract-references' ? 'extraction-output' : 'ai-output');
+        window.PaperRefAIBudget.report(null,button.dataset.ai==='extract-references'?'extraction-economy-usage':'ai-economy-usage');
         output.textContent = button.dataset.ai === 'extract-references' ? 'กำลังสกัดด้วย AI… ผลจะแสดงแยกจากชุดโค้ด' : 'กำลังวิเคราะห์…';
         try {
           const feature = button.dataset.ai;
           const p = await callAI(feature);
+          if(feature==='synthesis'&&(typeof p.synthesis!=='string'||!p.synthesis.trim()))throw new Error('AI ไม่ส่งข้อความสังเคราะห์ที่อ่านได้');
+          if(feature==='extract-references'&&(!Array.isArray(p.results)||!p.results.length))throw new Error('AI ไม่ส่งรายการอ้างอิงที่อ่านได้ ผลชุดเดิมยังอยู่');
           const workspaceRecord=datasets.get(activeDataset);if(workspaceRecord&&feature==='synthesis'){workspaceRecord.payload.workspace ||= {graphs:{}};workspaceRecord.payload.workspace.analysis=String(p.synthesis).slice(0,12000);persistWorkspace();}
           if (feature === 'intents') {
             for (const intent of p.intents) { const item = allResults.find(r => r.reference_number === intent.id); if (item) { item.intent = intent.intent; item.intent_reason = intent.reason; item.citation_contexts = p.contexts[String(intent.id)] || []; } }
@@ -791,18 +817,23 @@
             const recovered = (p.results || []).filter(r => r.extraction_fallback).length;
             displayPayload(p, 'ai'); output.textContent = `ได้ ${p.total_references} รายการ (AI ${p.total_references - recovered} · กู้จากต้นฉบับ ${recovered})${p.extraction_batches ? ' จาก ' + p.extraction_batches + ' ส่วน' : ''} · ผลโค้ดยังอยู่ในแท็บเดิม${p.extraction_warnings?.length ? '\n' + p.extraction_warnings.join('\n') : ''}`;
           } else output.textContent = p.synthesis;
+          window.PaperRefAIBudget.remember(p);
+          window.PaperRefAIBudget.report(p,feature==='extract-references'?'extraction-economy-usage':'ai-economy-usage');
         } catch (e) { output.textContent = e.message; }
       });
       document.getElementById('qa-form').onsubmit = async event => {
         event.preventDefault();
         const input = document.getElementById('qa-question'); const question = input.value.trim();
         if (!question) return;
+        window.PaperRefAIBudget.report(null);
         const log = document.getElementById('chat-log');
         try {
           const p = await callAI('qa', {question, history: chatHistory.slice(-10)});
+          if(typeof p.answer!=='string'||!p.answer.trim())throw new Error('AI ไม่ส่งคำตอบที่อ่านได้');
           document.getElementById('chat-empty').classList.add('hidden');
           chatHistory.push({role: 'user', content: question}, {role: 'assistant', content: p.answer.slice(0, 2000)});
           log.textContent += `คุณ: ${question}\nAI: ${p.answer}\n\n`; input.value = ''; log.scrollTop = log.scrollHeight;
+          window.PaperRefAIBudget.remember(p);window.PaperRefAIBudget.report(p);
         } catch (e) { showAlert(e.message); }
       };
 

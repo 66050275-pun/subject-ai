@@ -36,6 +36,8 @@ CORE_API_KEY = "your-core-key"
 
 รองรับ **Alibaba Cloud Model Studio (Qwen)** ในตั้งค่า AI ด้วย เลือกภูมิภาคตรงกับ Model Studio Standard API key แล้วกรอกโมเดล (ค่าเริ่มต้น `qwen-plus`) ไม่ต้องเพิ่ม SDK หรือ Secrets ของ Alibaba รายชื่อโมเดลแนะนำไม่ได้ตรวจคีย์หรือสิทธิ์สร้างคำตอบ อ่าน [ALIBABA_MODEL_STUDIO.md](ALIBABA_MODEL_STUDIO.md) สำหรับรายละเอียด
 
+ในตั้งค่า AI เปิด **โหมดประหยัด API** เพื่อส่งบริบทสั้นลงและเว้นระยะระหว่างคำขอ โหมดนี้ใช้ UI และ backend ชุดเดียวกับ local มีแถบสถานะระหว่างพัก ไม่ต้องตั้ง Secrets เพิ่ม ผลที่ใช้ซ้ำอยู่เฉพาะหน่วยความจำแท็บ ไม่มี cache ข้อมูลผู้ใช้ร่วมกันบนเซิร์ฟเวอร์ โควตาและสิทธิ์โมเดลฟรียังขึ้นกับบัญชีผู้ใช้ อ่าน [AI_ECONOMY_MODE.md](AI_ECONOMY_MODE.md)
+
 ## ทดสอบบนเครื่อง
 
 ```bash

@@ -16,9 +16,9 @@ def integer(value):
     return value
 
 
-def evidence_batches(papers):
-    rows = [{'id': p['id'], 'title': str(p.get('title') or '')[:200],
-             'abstract': str(p.get('abstract') or '')[:350],
+def evidence_batches(papers, *, economy_mode=False):
+    rows = [{'id': p['id'], 'title': str(p.get('title') or '')[:(120 if economy_mode else 200)],
+             'abstract': str(p.get('abstract') or '')[:(250 if economy_mode else 350)],
              'evidence_level': str(p.get('evidence_level') or 'title/metadata only')[:60]} for p in papers]
     batches, batch = [], []
     for row in rows:
@@ -144,11 +144,11 @@ def parse_assignments(value, paper_ids, themes):
     return result
 
 
-async def cluster_in_batches(papers, provider, model, key, base_url, generate, progress=None):
+async def cluster_in_batches(papers, provider, model, key, base_url, generate, progress=None, *, economy_mode=False):
     unknown = {p['id'] for p in papers if not str(p.get('title') or '').strip() and not str(p.get('abstract') or '').strip()}
     if len(unknown) == len(papers):
         raise HTTPException(422, 'ยังไม่พบชื่อเรื่องหรือ abstract สำหรับวางแผนธีม กดเติมชื่อเรื่องจริงก่อน · ไม่มีการเรียก AI')
-    batches = evidence_batches(papers)
+    batches = evidence_batches(papers, economy_mode=economy_mode)
     total = len(batches) + 1
     async def report(stage, completed):
         if progress:
@@ -163,7 +163,7 @@ async def cluster_in_batches(papers, provider, model, key, base_url, generate, p
               'Do not assign papers yet. No reasoning, Markdown or explanatory prose. Catalogue:\n' + json.dumps(catalogue, ensure_ascii=False))
     try:
         themes = parse_themes(await generate(provider, model, key, prompt, structured=True,
-                                            response_parser=parse_themes, max_output_tokens=6000, base_url=base_url))
+                                            response_parser=parse_themes, max_output_tokens=800 if economy_mode else 6000, base_url=base_url))
     except AIResponseFormatError as exc:
         reason = getattr(exc, 'reason', 'invalid_response')
         hint = 'คำตอบถูกตัดเพราะถึงขีดจำกัด output ของโมเดล ลองเลือกโมเดลที่ตอบสั้นหรือปิด reasoning ที่ผู้ให้บริการ' if reason == 'output_limit' else 'ไม่พบรายชื่อธีมที่อ่านได้ในคำตอบ AI ลองเลือกโมเดลอื่น'
@@ -181,7 +181,7 @@ async def cluster_in_batches(papers, provider, model, key, base_url, generate, p
                   'No abstracts, explanations, reasoning or Markdown in the response. Themes:\n' + json.dumps(themes, ensure_ascii=False) +
                   '\nPapers:\n' + json.dumps(batch, ensure_ascii=False))
         try:
-            value = await generate(provider, model, key, prompt, structured=True, max_output_tokens=6000, base_url=base_url)
+            value = await generate(provider, model, key, prompt, structured=True, max_output_tokens=1200 if economy_mode else 6000, base_url=base_url)
             parsed = parse_assignments(value, {p['id'] for p in batch}, themes)
             assignments.update({i: None if i in unknown else theme for i, theme in parsed.items()})
         except AIResponseFormatError:

@@ -247,7 +247,7 @@ def decode_structured_response(text):
     return result
 
 
-async def generate(provider, model, key, prompt, *, structured=False, response_parser=None, max_output_tokens=6000, base_url=None, timeout_seconds=90):
+async def generate(provider, model, key, prompt, *, structured=False, response_parser=None, max_output_tokens=6000, base_url=None, timeout_seconds=90, economy_mode=False):
     model, key = normalize_credentials(provider, model, key)
     base_url = normalize_provider_base_url(provider, base_url)
     if len(prompt) > 95000:
@@ -272,6 +272,8 @@ async def generate(provider, model, key, prompt, *, structured=False, response_p
         body = {'systemInstruction': {'parts': [{'text': system}]},
                 'contents': [{'role': 'user', 'parts': [{'text': prompt}]}],
                 'generationConfig': {'maxOutputTokens': max_output_tokens}}
+        if economy_mode and model in {'gemini-2.5-flash', 'gemini-2.5-flash-lite'}:
+            body['generationConfig']['thinkingConfig'] = {'thinkingBudget': 0}
         if structured:
             body['generationConfig']['responseMimeType'] = 'application/json'
     else:

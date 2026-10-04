@@ -520,12 +520,13 @@ def extract_citation_contexts(pdf_bytes: bytes, references: list[Reference]) -> 
     return contexts
 
 
-def split_bibliography_batches(text: str, max_chars: int = 6000, max_entries: int = 16) -> list[str]:
+def split_bibliography_batches(text: str, max_chars: int = 6000, max_entries: int = 16, *, preserve_entries: bool = False) -> list[str]:
     """Pack whole entries when recognizable; overlap unstructured long fragments."""
     bracketed = list(re.finditer(r'(?m)^\s*\[\d{1,4}\]\s*\S', text))
     plain = list(re.finditer(r'(?m)^\s*\(?\d{1,3}[.)]\s+\S', text))
-    markers = bracketed if len(bracketed) >= 2 else plain
-    if len(markers) >= 2:
+    markers = bracketed if len(bracketed) >= 2 or preserve_entries and bracketed else plain
+    recognizable = len(markers) >= 2 or preserve_entries and bool(markers)
+    if recognizable:
         starts = [0] + [m.start() for m in markers if m.start() > 0]
         units = [text[a:b] for a, b in zip(starts, starts[1:] + [len(text)])]
     else:
@@ -539,6 +540,11 @@ def split_bibliography_batches(text: str, max_chars: int = 6000, max_entries: in
         if len(unit) > max_chars:
             if current:
                 chunks.append('\n'.join(current)); current = []; size = 0
+            if preserve_entries and recognizable:
+                if len(unit) > 20000:
+                    raise ExtractionError('รายการอ้างอิงหนึ่งช่วงยาวเกิน 20,000 ตัวอักษร โหมดประหยัดไม่ตัดรายการทิ้ง กรุณาแนบเฉพาะบรรณานุกรมหรือใช้โหมดปกติ')
+                chunks.append(unit)
+                continue
             offset = 0
             while offset < len(unit):
                 end = min(offset + max_chars, len(unit))

@@ -12,7 +12,7 @@ def frontend_html():
     for name in ('utilities.css', 'app.css'):
         css = (BASE_DIR / 'static' / name).read_text()
         html = html.replace('<link rel="stylesheet" href="/static/' + name + '">', '<style>' + css + '</style>')
-    for name in ('progress.js', 'settings.js', 'workspace.js', 'history.js', 'graph.js', 'vendor/pdf.min.js', 'pdf-preview.js'):
+    for name in ('progress.js', 'settings.js', 'ai-budget.js', 'workspace.js', 'history.js', 'graph.js', 'vendor/pdf.min.js', 'pdf-preview.js'):
         script = (BASE_DIR / 'static' / name).read_text()
         html = html.replace('<script src="/static/' + name + '"></script>', '<script>' + script + '</script>')
     # The PDF worker is an inert asset, not a user PDF. Avoid a second network

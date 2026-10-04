@@ -64,6 +64,8 @@ For MaxPlus, choose **MaxPlus AI**, enter its own API key and use the default ba
 
 For Alibaba, open **⚙ Settings → AI**, choose **Alibaba Cloud Model Studio (Qwen)**, select the region that issued your Model Studio Standard API key, then enter the key and model (default `qwen-plus`). Singapore, Beijing, Virginia and Hong Kong endpoints are supported. Suggested models are not a key/quota check; model access and charges depend on your Alibaba account. See [ALIBABA_MODEL_STUDIO.md](ALIBABA_MODEL_STUDIO.md).
 
+For smaller AI workloads, enable **โหมดประหยัด API** in the AI settings. It selects shorter source excerpts, requests concise outputs, processes bibliography/intent batches serially, and spaces calls by 30/60/120 seconds. Successful matching results can be reused in page memory. References are retained; free-tier model access and remaining quota still depend on your provider account. See [AI_ECONOMY_MODE.md](AI_ECONOMY_MODE.md) for behavior and evidence limits.
+
 The frontend now separates **Code extraction**, **AI extraction** and **DOI database** results into individual datasets. Switch between them to inspect their own counts, selections, graph and exports. See `static/app.css` for the redesigned responsive workspace.
 
 Large AI bibliographies are extracted in smaller batches with live progress. The extraction read timeout is 180 seconds per batch, with no automatic paid retries. The graph now groups labelled paper cards by access status or AI themes, supports drag/zoom/Fit, and opens an inspector for selection and navigation. Upstream provider timeouts can still occur.

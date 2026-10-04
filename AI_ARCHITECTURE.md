@@ -37,6 +37,15 @@ All source-paper POST AI requests use multipart fields `provider` (`openai`, `ge
 
 ## Evidence, credentials and limits
 
+An opt-in Economy profile adds multipart fields `economy_mode` (default `false`)
+and `economy_interval` (default 30, 30–120 seconds) to every AI POST, including
+workspace comparison. `ai_economy.py` supplies bounded local evidence selection
+and a request-local serial/paced caller. Successful responses add `economy`
+metadata with request counts, prompt character counts, configured output token
+limits and evidence notices. The shared frontend implements a bounded page-memory
+success cache and an additional gate between user actions. Detailed behavior,
+quota tradeoffs and account limitations are in [AI_ECONOMY_MODE.md](AI_ECONOMY_MODE.md).
+
 - Users explicitly invoke each paid feature. The key remains in the password field for reuse until cleared, provider changes or the page closes; no local/session storage, server persistence, key query parameters or server fallback key. Provider request failures return generic messages, without echoing credentials or response bodies.
 - Input PDFs are capped at 50 MB; source context at 18,000 characters. Long source bodies contain an explicit middle omission marker. Q&A cannot reliably answer about omitted passages; no full-text retrieval index is implemented.
 - Bibliography fallback accepts up to 120,000 candidate characters and 1,000 merged references. It packs recognizable whole entries into batches of at most 6,000 characters / 16 entry units; unstructured long fragments have a 350-character overlap. MaxPlus runs one batch at a time; other providers run at most two concurrently. Each call is capped at 6,000 output tokens with a 180-second read timeout. There are no automatic paid retries. Serial execution reduces simultaneous calls but does not override provider request/token quotas; HTTP 429 reports numeric Retry-After guidance when supplied.
