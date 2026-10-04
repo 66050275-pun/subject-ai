@@ -11,6 +11,14 @@
   };
   const short = (value, count) => Array.from(String(value || '')).slice(0, count).join('');
   const paperTitle = item => item.matched_title || item.title || `อ้างอิง #${item.reference_number} · รอค้นชื่อเรื่อง`;
+  const paperAuthors = item => Array.isArray(item.authors)
+    ? item.authors.filter(name => typeof name === 'string' && name.trim()).slice(0,40).map(name => name.trim().replace(/\s+/g,' ').slice(0,300)) : [];
+  const authorLabel = item => {
+    const names = paperAuthors(item);
+    if (!names.length) return 'ยังไม่พบชื่อผู้แต่ง';
+    const value = names.join(' · ');
+    return short(value,31) + (Array.from(value).length > 31 ? '…' : '');
+  };
   const titleLines = value => {
     const cut = str => {
       if (Array.from(str).length <= 27) return [str, ''];
@@ -90,7 +98,8 @@
         const item = node.item;
         document.getElementById('graph-inspector').classList.remove('hidden');
         document.getElementById('graph-paper-title').textContent = paperTitle(item);
-        document.getElementById('graph-paper-meta').textContent = `Reference ${item.reference_number} · ${item.year || 'ไม่พบปี'} · ${item.access_label || 'ยังไม่พบลิงก์ PDF'}`;
+        const authors = paperAuthors(item);
+        document.getElementById('graph-paper-meta').textContent = `Reference ${item.reference_number} · ${item.year || 'ไม่พบปี'} · ${item.access_label || 'ยังไม่พบลิงก์ PDF'} · ผู้แต่ง: ${authors.length ? authors.join(', ') : 'ยังไม่พบชื่อผู้แต่ง'}`;
         document.getElementById('graph-open-paper').onclick = () => onOpen(item);
         const select = document.getElementById('graph-select-paper');
         select.disabled = !allowSelection;
@@ -105,7 +114,7 @@
         const el = make('g', {'data-graph-node': node.kind, tabindex: '0', role: 'button',
           'aria-label': node.kind === 'root' ? 'งานต้นทาง: ' + sourceName : node.kind === 'group'
             ? node.group.name + ': ' + node.group.items.length + ' รายการ'
-            : 'Reference ' + node.item.reference_number + ': ' + paperTitle(node.item),
+            : 'Reference ' + node.item.reference_number + ': ' + paperTitle(node.item) + ' · ผู้แต่ง: ' + (paperAuthors(node.item).join(', ') || 'ยังไม่พบชื่อผู้แต่ง'),
           style: 'cursor:grab'});
         node.el = el;
         const body = make('rect', {x: -node.width / 2, y: -node.height / 2, width: node.width,
@@ -132,8 +141,10 @@
           el.append(text(firstLine, -72, -15, {fill: '#263d30', 'font-size': 11, 'font-weight': 600}));
           el.append(text(secondLine, -72, 2,
             {fill: '#263d30', 'font-size': 11}));
-          el.append(text((node.item.year || 'ไม่พบปี') + (node.item.oa_pdf_url ? '  ·  PDF available' : ''), -72, 24,
-            {fill: '#89947e', 'font-size': 9}));
+          el.append(text(authorLabel(node.item), -72, 16,
+            {fill: '#89947e', 'font-size': 9, class: 'graph-paper-authors'}));
+          el.append(text((node.item.year || 'ไม่พบปี') + (node.item.oa_pdf_url ? '  ·  PDF available' : ''), -72, 30,
+            {fill: '#89947e', 'font-size': 9, class: 'graph-paper-details'}));
           node.body.setAttribute('class', 'graph-paper-card');
         }
         if (node.parent) {

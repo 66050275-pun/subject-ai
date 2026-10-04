@@ -22,8 +22,10 @@ class TransportTests(unittest.TestCase):
         expected = (root / 'static/index.html').read_text()
         for name in ('utilities.css', 'app.css'):
             expected = expected.replace('<link rel="stylesheet" href="/static/' + name + '">', '<style>' + (root / 'static' / name).read_text() + '</style>')
-        for name in ('progress.js', 'settings.js', 'workspace.js', 'history.js', 'graph.js'):
+        for name in ('progress.js', 'settings.js', 'workspace.js', 'history.js', 'graph.js', 'vendor/pdf.min.js', 'pdf-preview.js'):
             expected = expected.replace('<script src="/static/' + name + '"></script>', '<script>' + (root / 'static' / name).read_text() + '</script>')
+        worker = base64.b64encode((root / 'static/vendor/pdf.worker.min.js').read_bytes()).decode('ascii')
+        expected = expected.replace('</body>', '<template id="pdf-worker-data">' + worker + '</template></body>', 1)
         expected = expected.replace('class="brand" href="/"', 'class="brand" href="#paper-input"')
         import re
         page = re.sub(r'<meta http-equiv="Content-Security-Policy"[^>]*><meta name="referrer" content="no-referrer">', '', page, count=1)

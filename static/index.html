@@ -36,6 +36,19 @@
             <input id="file-input" type="file" accept=".pdf,application/pdf" class="sr-only">
             <div id="dropzone" role="button" tabindex="0" aria-describedby="upload-hint"><span class="upload-icon">↑</span><h3>วางเปเปอร์ของคุณตรงนี้</h3><p>ลาก PDF มาวาง หรือ <b>เลือกจากอุปกรณ์</b></p><span id="upload-hint">รองรับ PDF ที่มีข้อความ · สูงสุด 50 MB</span></div>
             <div id="file-row" class="file-row hidden"><span id="file-name"></span><button id="remove-file" type="button">เปลี่ยนไฟล์ →</button></div>
+            <section id="pdf-preview" class="pdf-preview hidden" aria-label="พรีวิวไฟล์ PDF ที่แนบ">
+              <div class="pdf-preview-heading"><div><h4>พรีวิวเอกสาร</h4><p>อ่านในเบราว์เซอร์ · ไม่เก็บ PDF ในประวัติ</p></div><button id="pdf-preview-toggle" type="button" aria-expanded="true" aria-controls="pdf-preview-body">ซ่อนพรีวิว</button></div>
+              <div id="pdf-preview-body">
+                <div class="pdf-preview-toolbar" role="group" aria-label="ควบคุมพรีวิว PDF">
+                  <div><button id="pdf-prev" type="button" disabled aria-label="หน้า PDF ก่อนหน้า">←</button><span id="pdf-page-label">หน้า —</span><button id="pdf-next" type="button" disabled aria-label="หน้า PDF ถัดไป">→</button></div>
+                  <div><button id="pdf-zoom-out" type="button" disabled aria-label="ย่อพรีวิว PDF">−</button><span id="pdf-zoom-label">100%</span><button id="pdf-zoom-in" type="button" disabled aria-label="ขยายพรีวิว PDF">+</button></div>
+                  <a id="pdf-open" target="_blank" rel="noopener noreferrer">เปิดแยก →</a>
+                </div>
+                <p id="pdf-preview-status" role="status" aria-live="polite"></p>
+                <div id="pdf-preview-viewport" class="pdf-preview-viewport" aria-busy="false"><canvas id="pdf-preview-canvas" role="img" aria-label="พรีวิว PDF" class="hidden"></canvas></div>
+                <p class="pdf-preview-note">หากภาพหรือฟอนต์ในพรีวิวไม่ครบ ให้เลือก “เปิดแยก” เพื่อดูไฟล์ต้นฉบับ</p>
+              </div>
+            </section>
             <div class="extraction-methods"><div class="method-card"><span class="method-label">⌘ CODE EXTRACTION</span><h4>สกัดด้วยโค้ด</h4><p>อ่านบรรณานุกรมอัตโนมัติ<br>เริ่มได้ทันที ไม่ใช้ AI key</p><button id="analyze-button" type="button" disabled class="primary-button"><span id="button-spinner" class="spin hidden" aria-hidden="true">◌</span><span id="button-label">สกัดด้วยโค้ด →</span></button></div><div class="method-card ai-method"><span class="method-label">✦ AI EXTRACTION</span><h4>สกัดด้วย AI</h4><p>ตัวเลือกสำหรับรูปแบบซับซ้อน<br>ใช้ API key และแสดงผลแยกชุด<br>ไฟล์ยาวจะแบ่งเป็นหลายคำขอ</p><button data-ai="extract-references" type="button" class="violet-button">สกัดด้วย AI →</button><a href="#ai-settings" class="method-settings">ตั้งค่า API key ⚙</a></div></div>
             <div id="code-progress" class="operation-progress hidden"></div><div id="extraction-progress" class="operation-progress ai-progress hidden"></div><div id="extraction-output" role="status" class="output-block"></div>
           </div>
@@ -219,6 +232,8 @@
   <script src="/static/workspace.js"></script>
   <script src="/static/history.js"></script>
   <script src="/static/graph.js"></script>
+  <script src="/static/vendor/pdf.min.js"></script>
+  <script src="/static/pdf-preview.js"></script>
   <script>
     (() => {
 
@@ -277,17 +292,20 @@
         hideAlert();
         if (!file) return;
         if (!(file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))) {
+          window.PaperRefPreview.clear();
           selectedFile = null; fileInput.value = ''; analyzeButton.disabled = true;
           document.getElementById('file-row').classList.add('hidden');
           showAlert('ไฟล์นี้ไม่ใช่ PDF กรุณาเลือกไฟล์ .pdf'); return;
         }
         if (file.size > MAX_BYTES) {
+          window.PaperRefPreview.clear();
           selectedFile = null; fileInput.value = ''; analyzeButton.disabled = true;
           document.getElementById('file-row').classList.add('hidden');
           showAlert('ไฟล์มีขนาดเกิน 50 MB กรุณาเลือกไฟล์ที่เล็กกว่านี้'); return;
         }
         resetDatasets();
         selectedFile = file;
+        window.PaperRefPreview.setFile(file);
         activeFile = file; activeDoi = ''; allResults = []; allCitingResults = [];
         selectedPapers.clear(); clusterColors.clear(); chatHistory = []; updateSelection();
         document.getElementById('chat-log').textContent = '';
@@ -440,6 +458,7 @@
       window.PaperRefHistory.onRestore((payload, kind, historyId) => {
         if (aiBusy || codeBusy || doiBusy || oaController || metadataController) { document.getElementById('history-status').textContent = 'รอการประมวลผลปัจจุบันเสร็จก่อนเปิดประวัติ'; return false; }
         resetDatasets(); selectedFile = null; activeFile = null; fileInput.value = ''; analyzeButton.disabled = true;
+        window.PaperRefPreview.clear();
         document.getElementById('file-row').classList.add('hidden');
         document.getElementById('doi-input').value = kind === 'doi' ? (payload.source_paper?.doi || '') : '';
         document.getElementById('search-input').value = '';
@@ -456,7 +475,11 @@
       dropzone.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); fileInput.click(); }
       });
-      fileInput.addEventListener('change', () => chooseFile(fileInput.files[0]));
+      fileInput.addEventListener('change', () => {
+        chooseFile(fileInput.files[0]);
+        // The File object remains in memory; allow picking this same file again.
+        fileInput.value = '';
+      });
       document.getElementById('remove-file').addEventListener('click', () => fileInput.click());
       ['dragenter', 'dragover'].forEach((eventName) => dropzone.addEventListener(eventName, (event) => {
         event.preventDefault(); dropzone.classList.add('drop-active');
@@ -499,6 +522,7 @@
           if (!response.ok) throw new Error(payload.detail || 'ค้นหา DOI ไม่สำเร็จ');
           if (requestVersion !== sourceVersion) return;
           resetDatasets(); selectedFile = null; fileInput.value = ''; activeFile = null;
+          window.PaperRefPreview.clear();
           document.getElementById('file-row').classList.add('hidden'); analyzeButton.disabled = true;
           displayPayload(payload, 'doi');
         } catch (error) {

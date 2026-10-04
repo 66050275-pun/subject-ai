@@ -33,6 +33,16 @@ Open <http://127.0.0.1:8000>. The health endpoint is <http://127.0.0.1:8000/heal
 4. Use the graph to jump to a reference. Drag nodes to rearrange them, drag the background to pan, and use the wheel or zoom buttons to change scale. The References and Citation tabs separate the bibliography from PDF-linked citations.
 5. Search the result list, then export results as CSV or JSON.
 
+Selecting a PDF opens a local, read-only preview in the upload panel. Browse pages,
+zoom, collapse the preview, or open the original file separately. Previewing uses
+no API key and sends no PDF to the server; PDF bytes and canvas images are excluded
+from history. The same viewer works in the FastAPI and Streamlit frontend. Unusual
+fonts/image encodings or encrypted files may require opening the original file.
+
+Graph reference cards show author names in a small grey line, including after AI
+theme clustering. Select a node to read the full author list; missing author
+metadata is labelled explicitly. Saved graph positions remain compatible.
+
 Crossref's polite-pool contact is optional. Set `PAPERREF_CONTACT_EMAIL` before starting Uvicorn to include it in Crossref's `mailto` parameter and User-Agent. The browser loads Tailwind CSS and fonts from public CDNs.
 
 ## API endpoints

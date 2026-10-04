@@ -17,6 +17,8 @@ class WebSecurityTests(unittest.TestCase):
         self.assertIn("'sha256-" + digest + "'", policy)
         self.assertNotIn("'unsafe-inline'", policy.split(';')[1])
         self.assertIn("object-src 'none'", policy)
+        self.assertIn('worker-src blob:', policy)
+        self.assertNotIn('blob:', policy.split(';')[1])  # Worker asset must not permit arbitrary page scripts.
 
     def test_sensitive_and_homepage_response_headers(self):
         async def check():

@@ -12,7 +12,7 @@ def content_policy(html):
     return ("default-src 'self'; script-src 'self' " + ' '.join(hashes) +
             "; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; "
-            "connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'")
+            "connect-src 'self'; worker-src blob:; object-src 'none'; base-uri 'none'; form-action 'self'")
 
 
 class SecurityHeaders:

@@ -41,6 +41,16 @@ page, and permits Google Fonts. Streamlit's embedded version computes hashes for
 its bundled scripts and adds a CSP meta policy. Host-level Streamlit headers and
 iframe sandboxing are controlled by Streamlit, not FastAPI middleware.
 
+The PDF preview uses locally bundled PDF.js and a browser-only blob worker.
+`worker-src blob:` permits this worker without allowing blob page scripts, eval,
+embedded objects or foreign connections. Previewing sends no PDF to the server;
+document bytes and canvas images are not part of IndexedDB history. Only one page
+is rendered at a time with a canvas size cap. Replacing a document disposes its
+worker, clears the canvas and revokes its local file URL. The read-only preview
+does not execute PDF scripts, attachments or forms. See
+[static/vendor/PDFJS-NOTICE.md](static/vendor/PDFJS-NOTICE.md) for asset versions,
+licenses, rebuild commands and font/image-decoder limits.
+
 FastAPI adds `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, a
 restricted Permissions Policy, API `Cache-Control: no-store`, and a homepage CSP
 with `frame-ancestors 'self'`. Middleware forwards streaming frames without
