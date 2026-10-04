@@ -135,7 +135,6 @@ async def summarize(file: UploadFile | None = File(None), doi: str | None = Form
         'สรุปเป้าหมาย วิธีการ ผลลัพธ์ ข้อจำกัด และสรุปสั้น ๆ หากมีเพียง metadata ให้บอกว่าไม่พอสรุปผลวิจัย\n' + text, base_url=base_url)
     return {'summary': summary, 'source': source, 'provider': provider, 'model': model or DEFAULT_MODELS[provider]}
 
-@router.post('/api/ai/{feature}')
 async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'extract-references'],
                   file: UploadFile | None = File(None), doi: str | None = Form(None),
                   provider: str = Form('openai'), model: str = Form(''), base_url: str | None = Form(None), payload: str = Form('{}'), stream: bool = Form(False),
@@ -486,3 +485,8 @@ async def compare_workspace(provider: str = Form('openai'), model: str = Form(''
     result = await generate(provider, model, key, prompt, max_output_tokens=6000, base_url=base_url)
     return {'comparison': result, 'provider': provider, 'model': model,
             'evidence': 'Selected browser history metadata, abstracts and saved AI summaries only'}
+
+
+# Register concrete endpoints first so /api/ai/compare reaches its own handler
+# rather than failing Literal validation in the general feature route.
+router.add_api_route('/api/ai/{feature}', analyze, methods=['POST'])

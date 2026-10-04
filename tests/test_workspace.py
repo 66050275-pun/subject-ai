@@ -9,6 +9,33 @@ from starlette.formparsers import MultiPartParser
 
 
 class WorkspaceTests(unittest.TestCase):
+    def test_comparison_http_route_accepts_valid_selected_papers(self):
+        async def run():
+            key = 'mock-comparison-api-key'
+            papers = [{'title': 'Paper One', 'summary': 'Method A'},
+                      {'title': 'Paper Two', 'abstract': 'Result B'}]
+            with patch('ai_features.generate', new_callable=AsyncMock, return_value='Comparison') as generate, \
+                 patch('ai_features.source_material', new_callable=AsyncMock, side_effect=AssertionError('Comparison must not read a PDF')), \
+                 patch('ai_features.enrich_ai_references', new_callable=AsyncMock, side_effect=AssertionError('Comparison must use saved evidence')):
+                async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
+                    response = await client.post('/api/ai/compare',
+                        data={'provider': 'openai', 'model': 'gpt-4o-mini',
+                              'payload': json.dumps({'papers': papers})},
+                        headers={'X-AI-API-Key': key})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()['comparison'], 'Comparison')
+                self.assertEqual(response.json()['provider'], 'openai')
+                self.assertEqual(response.json()['model'], 'gpt-4o-mini')
+                self.assertEqual(response.headers['cache-control'], 'no-store')
+                generate.assert_awaited_once()
+                self.assertEqual(generate.call_args.args[:3], ('openai', 'gpt-4o-mini', key))
+                prompt = generate.call_args.args[3]
+                self.assertIn('Method A', prompt)
+                self.assertIn('Result B', prompt)
+                self.assertNotIn(key, prompt)
+                self.assertNotIn(key, response.text)
+        asyncio.run(run())
+
     def test_comparison_uses_only_selected_evidence(self):
         async def run():
             with patch('ai_features.generate', new_callable=AsyncMock, return_value='Comparison') as generate:
