@@ -119,3 +119,22 @@ group, rather than inferred into a theme or dropped. The frontend validates the
 entire partition before replacing colours and saves successful graph themes.
 Cluster requests outside the existing 3–100 reference limit are explained before
 sending the PDF/key. These checks use mocked provider responses, not live keys.
+
+## Batched graph clustering
+
+For 13–100 references, `/api/ai/clusters` now plans 3–5 shared themes from a
+bounded title catalogue, then assigns references to those fixed theme IDs in
+serial batches of at most 12 records / 7,000 evidence characters. Abstracts are
+bounded to 350 characters and titles to 200 per assignment. A batch returns only
+paper ID/theme ID pairs; it does not repeat abstracts or reasons. Missing/null
+assignments stay grey. Planned but unused themes may have empty memberships.
+At most 12 references keep the previous single-call path.
+
+`stream=true` returns NDJSON progress for metadata, planning and assigning,
+heartbeats, then one final result or error. All results are merged before graph
+colours change. Request count is one plan plus assignment batches (54 short
+records: 6 calls). More calls have provider cost/quota implications. No paid
+retry, model switch or partial graph replacement is automatic. Serial batches
+reduce response size but cannot override provider quota or reasoning/token limits.
+Existing JSON clients remain supported. The frontend shows progress and the final
+batch/request count using the same transport as bibliography extraction.

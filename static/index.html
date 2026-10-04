@@ -168,7 +168,7 @@
           <button id="summary-button" type="button" class="tool-card"><span class="tool-icon">≋</span><span><b id="summary-button-label">สรุปงานวิจัย</b><small>เป้าหมาย วิธีการ ผลลัพธ์ และข้อจำกัด</small></span><span id="summary-spinner" class="spin hidden">◌</span><span class="tool-arrow">→</span></button>
           <button data-ai="intents" type="button" class="tool-card"><span class="tool-icon">⌁</span><span><b>อ่านบริบท citation</b><small>ดูว่าแต่ละงานถูกอ้างถึงเพื่ออะไร</small></span><span class="tool-arrow">→</span></button>
           <button data-ai="synthesis" type="button" class="tool-card"><span class="tool-icon">⊞</span><span><b>สังเคราะห์วรรณกรรม</b><small>เลือก 3–5 เปเปอร์ แล้วสำรวจ research gap</small></span><span class="tool-arrow">→</span></button>
-          <button data-ai="clusters" type="button" class="tool-card"><span class="tool-icon">◎</span><span><b>จัดกลุ่มธีมบนกราฟ</b><small>มองเครือข่ายผ่านสีและหัวข้อย่อย</small></span><span class="tool-arrow">→</span></button>
+          <button data-ai="clusters" type="button" class="tool-card"><span class="tool-icon">◎</span><span><b>จัดกลุ่มธีมบนกราฟ</b><small>จัดธีมบนกราฟ · เกิน 12 อ้างอิงใช้หลายคำขอ API</small></span><span class="tool-arrow">→</span></button>
         </div><div id="summary-output" role="status" class="output-block hidden"></div><div id="ai-output" role="status" class="output-block"></div>
         <section class="panel chat-panel"><div class="panel-heading"><span class="icon-tile violet">✦</span><div><h3>คุยกับงานวิจัยของคุณ</h3><p>ถามจากเนื้อหาต้นทาง และ metadata ของ references ที่เลือก</p></div><span class="chat-label">PAPER Q&A</span></div><div id="chat-empty" class="chat-empty"><span>“</span><p>อะไรคือข้อจำกัดของงานนี้?<br>วิธีการต่างจากเปเปอร์ที่อ้างถึงอย่างไร?</p></div><div id="chat-log" role="log" class="chat-log"></div><form id="qa-form"><input id="qa-question" aria-label="คำถามงานวิจัย" maxlength="2000" required placeholder="ถามเกี่ยวกับงานวิจัยนี้…"><button type="submit" aria-label="ส่งคำถาม">↑</button></form><p class="chat-footnote">คำตอบใช้บริบทที่สกัดได้ เนื้อหายาวอาจถูกตัด และบางรายการอาจไม่มี abstract</p></section>
       </section>
@@ -586,7 +586,7 @@
         const doi = activeDoi || document.getElementById('doi-input').value.trim();
         if (feature === 'extract-references' && !file) throw new Error('เลือก PDF ก่อนสกัดด้วย AI');
         if (file) form.append('file', file); else if (doi) form.append('doi', doi); else throw new Error('เลือก PDF หรือ DOI ก่อนใช้ AI');
-        if (feature === 'extract-references') form.append('stream', 'true');
+        if (feature === 'extract-references' || feature === 'clusters') form.append('stream', 'true');
         form.append('provider', providerSelect.value);
         if (providerSelect.value === 'maxplus') form.append('base_url', document.getElementById('maxplus-base-url').value.trim());
         form.append('model', document.getElementById('summary-model').value.trim());
@@ -599,7 +599,7 @@
         try {
           const response = await fetch(feature === 'summary' ? '/api/summarize' : '/api/ai/' + feature, {method: 'POST', body: form, headers: {'X-AI-API-Key': key}});
           const payload = response.ok && response.headers.get('content-type')?.includes('application/x-ndjson')
-            ? await readExtractionStream(response) : await response.json();
+            ? await readExtractionStream(response, feature) : await response.json();
           if (!response.ok) throw new Error(typeof payload.detail === 'string' ? payload.detail : 'ข้อมูลคำขอไม่ถูกต้อง');
           if (requestVersion !== sourceVersion || requestDataset !== activeDataset) throw new Error('งานต้นทางหรือชุดผลลัพธ์เปลี่ยนแล้ว กรุณาเรียกเครื่องมือกับชุดปัจจุบัน');
           return payload;
@@ -609,17 +609,21 @@
           document.querySelectorAll('[data-ai], #summary-button, #qa-form button').forEach(b => b.disabled = false);
         }
       }
-      async function readExtractionStream(response) {
+      async function readExtractionStream(response, feature = 'extract-references') {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let pending = '', result = null;
-        const output = document.getElementById('extraction-output');
+        const output = document.getElementById(feature === 'clusters' ? 'ai-output' : 'extraction-output');
         const consume = line => {
           if (!line.trim()) return;
           const event = JSON.parse(line);
           if (event.type === 'error') throw new Error(event.detail);
           if (event.type === 'result') result = event.payload;
-          if (event.type === 'progress') {
+          if (event.type === 'progress' && feature === 'clusters') {
+            const label = event.stage === 'metadata' ? 'กำลังเตรียมชื่อเรื่องและ abstract…' : event.stage === 'planning' ? 'กำลังกำหนดธีมร่วมสำหรับทุกชุด…' : 'กำลังจัดอ้างอิงทีละชุดตามธีมร่วม…';
+            progress.update('ai-progress', label, event.total ? event.completed : null, event.total || null);
+            output.textContent = `${label}${event.total ? ` ${event.completed}/${event.total} ขั้นตอน` : ''} · ใช้หลายคำขอ API และไม่มีการเรียกซ้ำอัตโนมัติ`;
+          } else if (event.type === 'progress') {
             progress.update('extraction-progress', event.stage === 'resolving' ? 'สกัดบรรณานุกรมแล้ว กำลังค้นหา DOI และลิงก์…' : 'กำลังสกัดบรรณานุกรมทีละส่วน…', event.stage === 'resolving' ? null : event.completed, event.total);
             output.textContent = event.stage === 'resolving'
               ? `สกัดครบ ${event.total} ส่วนแล้ว กำลังค้นหา DOI และลิงก์สำหรับรายการทั้งหมด…`
@@ -635,6 +639,7 @@
             if (done) break;
           }
           consume(pending);
+          if (!result && feature === 'clusters') throw new Error('การเชื่อมต่อจบก่อนจัดกลุ่มครบ ผลกราฟเดิมยังอยู่');
           if (!result) throw new Error('การเชื่อมต่อจบก่อนสกัดครบ ผลชุดเดิมยังอยู่ ลองใช้โมเดลอื่นหรือแนบเฉพาะหน้าบรรณานุกรม');
           return result;
         } finally { await reader.cancel().catch(() => {}); }
@@ -659,7 +664,7 @@
             const nextColors = new Map();
             if (!Array.isArray(p.clusters) || p.clusters.length < 3 || p.clusters.length > 5) throw new Error('AI ส่งกลุ่มหัวข้อไม่ครบ ผลกราฟเดิมยังอยู่');
             for (const [i, c] of p.clusters.entries()) {
-              if (typeof c.name !== 'string' || !c.name.trim() || !Array.isArray(c.ids) || !c.ids.length) throw new Error('AI ส่งรายละเอียดกลุ่มไม่ถูกต้อง ผลกราฟเดิมยังอยู่');
+              if (typeof c.name !== 'string' || !c.name.trim() || !Array.isArray(c.ids)) throw new Error('AI ส่งรายละเอียดกลุ่มไม่ถูกต้อง ผลกราฟเดิมยังอยู่');
               for (const id of c.ids) {
                 if (!Number.isSafeInteger(id) || nextColors.has(id) || !allResults.some(r => r.reference_number === id)) throw new Error('AI ส่งเลขอ้างอิงไม่ถูกต้อง ผลกราฟเดิมยังอยู่');
                 nextColors.set(id, {color: palette[i], name: c.name});
@@ -675,7 +680,7 @@
             document.getElementById('network-panel').open = true;
             setView('references');
             persistWorkspace();
-            output.textContent = 'จัดสีธีมบนกราฟแล้ว · ธีมเป็นผลวิเคราะห์ AI จากชื่อเรื่องและ abstract ที่พบ' + (p.unassigned_ids?.length ? `\nAI ยังไม่จัดกลุ่ม ${p.unassigned_ids.length} รายการ แสดงสีเทาโดยไม่เดาธีมให้` : '');
+            output.textContent = (p.clustering_batches ? `จัดกลุ่มครบ ${p.clustering_batches} ชุด (${p.clustering_requests} คำขอ AI)\n` : '') + 'จัดสีธีมบนกราฟแล้ว · ธีมเป็นผลวิเคราะห์ AI จากชื่อเรื่องและ abstract ที่พบ' + (p.unassigned_ids?.length ? `\nAI ยังไม่จัดกลุ่ม ${p.unassigned_ids.length} รายการ แสดงสีเทาโดยไม่เดาธีมให้` : '');
           } else if (feature === 'extract-references') {
             p.source_paper ||= datasets.get('code')?.payload.source_paper || null;
             p.filename = selectedFile.name.replace(/\.pdf$/i, '') || 'งานวิจัย';

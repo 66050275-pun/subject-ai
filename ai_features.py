@@ -9,6 +9,7 @@ from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
 from pydantic import BaseModel, Field, ValidationError, ConfigDict
 
 from ai_clusters import normalize_clusters
+from ai_cluster_batches import cluster_in_batches, BATCH_SIZE
 from ai_engine import generate, DEFAULT_MODELS, normalize_credentials, gemini_models, maxplus_models, normalize_maxplus_url
 from extractor import (extract_source_metadata, ExtractionError, Reference, extract_summary_text,
                        extract_bibliography_text, extract_citation_contexts, extract_citation_counts, split_bibliography_batches)
@@ -165,6 +166,16 @@ async def analyze(feature: Literal['intents', 'synthesis', 'clusters', 'qa', 'ex
     else:
         text, source, data = await source_material(file, doi)
     papers = [paper.model_dump() for paper in request.papers]
+    if feature == 'clusters' and len(papers) > BATCH_SIZE:
+        async def work(progress=None):
+            if progress:
+                await progress({'type': 'progress', 'stage': 'metadata', 'completed': 0, 'total': 0})
+            enriched = await enrich_ai_references(papers)
+            result = await cluster_in_batches(enriched, provider, model, key, base_url, generate, progress)
+            return {**result, 'provider': provider, 'model': model, 'source': source}
+        if stream:
+            return ai_result_stream(work, 'จัดกลุ่มกราฟไม่สำเร็จ ผลกราฟเดิมยังอยู่')
+        return await work()
     if feature == 'intents':
         refs = [Reference(p.original_text, p.title, p.year, p.id, p.doi) for p in request.papers]
         contexts = extract_citation_contexts(data, refs) if data else {}
@@ -328,16 +339,23 @@ async def extract_bibliography_result(data, text, provider, model, key, base_url
 
 
 def bibliography_stream(data, text, provider, model, key, base_url, source):
+    async def work(progress):
+        result = await extract_bibliography_result(data, text, provider, model, key, base_url, progress)
+        return {**result, 'provider': provider, 'model': model, 'source': source}
+    return ai_result_stream(work, 'ประมวลผลบรรณานุกรมไม่สำเร็จ')
+
+
+def ai_result_stream(work, error_detail):
     async def events():
         queue = asyncio.Queue()
         async def worker():
             try:
-                result = await extract_bibliography_result(data, text, provider, model, key, base_url, queue.put)
-                await queue.put({'type': 'result', 'payload': {**result, 'provider': provider, 'model': model, 'source': source}})
+                result = await work(queue.put)
+                await queue.put({'type': 'result', 'payload': result})
             except HTTPException as exc:
                 await queue.put({'type': 'error', 'status': exc.status_code, 'detail': exc.detail})
             except Exception:
-                await queue.put({'type': 'error', 'status': 500, 'detail': 'ประมวลผลบรรณานุกรมไม่สำเร็จ'})
+                await queue.put({'type': 'error', 'status': 500, 'detail': error_detail})
         task = asyncio.create_task(worker())
         try:
             while True:
